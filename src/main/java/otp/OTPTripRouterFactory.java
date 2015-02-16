@@ -10,23 +10,26 @@ import org.matsim.core.utils.geometry.CoordinateTransformation;
 import org.matsim.pt.transitSchedule.api.TransitSchedule;
 import org.opentripplanner.routing.algorithm.GenericAStar;
 import org.opentripplanner.routing.graph.Graph;
+import org.opentripplanner.routing.impl.GenericAStarFactory;
 import org.opentripplanner.routing.impl.GraphServiceImpl;
 import org.opentripplanner.routing.impl.RetryingPathServiceImpl;
+import org.opentripplanner.routing.impl.SPTServiceFactory;
 
 public final class OTPTripRouterFactory implements
 		TripRouterFactory {
-	
+	// TripRouterFactory: Matsim interface for routers
 	
 	private Graph graph;
-
 	private CoordinateTransformation ct;
-
 	private String day;
-
+	private RetryingPathServiceImpl pathservice;
+//	private GenericAStar sptService = new GenericAStar();
+	private SPTServiceFactory sptService = new GenericAStarFactory();
+	private TransitSchedule transitSchedule;
 	
 
-	public OTPTripRouterFactory(TransitSchedule transitSchedule, CoordinateTransformation ct, String day) {
-		File path = new File("/Users/michaelzilske/gtfs-ulm/Graph.obj");
+	public OTPTripRouterFactory(TransitSchedule transitSchedule, CoordinateTransformation ct, String day, String graphFile) {
+		File path = new File(graphFile);
 		try {
 			graph = Graph.load(path, Graph.LoadLevel.FULL);
 		} catch (IOException e) {
@@ -34,8 +37,7 @@ public final class OTPTripRouterFactory implements
 		} catch (ClassNotFoundException e) {
 			throw new RuntimeException();
 		}
-		pathservice.setGraphService(graphservice);
-		pathservice.setSptService(sptService);
+		pathservice = new RetryingPathServiceImpl(graphservice, sptService);
 		this.transitSchedule = transitSchedule;
 		this.ct = ct;
 		this.day = day;
@@ -45,11 +47,7 @@ public final class OTPTripRouterFactory implements
 		public Graph getGraph(String routerId) { return graph; }
 	};
 
-	private RetryingPathServiceImpl pathservice = new RetryingPathServiceImpl();
 
-	private GenericAStar sptService = new GenericAStar();
-
-	private TransitSchedule transitSchedule;
 	
 	@Override
 	public TripRouter instantiateAndConfigureTripRouter(RoutingContext iterationContext) {

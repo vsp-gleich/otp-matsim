@@ -34,12 +34,15 @@ import org.matsim.pt.transitSchedule.api.TransitSchedule;
 import org.matsim.pt.transitSchedule.api.TransitScheduleFactory;
 import org.matsim.pt.transitSchedule.api.TransitStopFacility;
 import org.onebusaway.gtfs.model.Trip;
+import org.opentripplanner.common.model.GenericLocation;
 import org.opentripplanner.routing.core.OptimizeType;
 import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.core.TraverseModeSet;
 import org.opentripplanner.routing.edgetype.FreeEdge;
-import org.opentripplanner.routing.edgetype.PlainStreetEdge;
+import org.opentripplanner.routing.edgetype.StreetEdge;
+// included in opentripplanner 0.11.0, but not in 0.12.0 where class StreetEdge with the same author and description replaces an abstract class StreetEdge
+//import org.opentripplanner.routing.edgetype.PlainStreetEdge;
 import org.opentripplanner.routing.edgetype.TransferEdge;
 import org.opentripplanner.routing.edgetype.TransitBoardAlight;
 import org.opentripplanner.routing.error.VertexNotFoundException;
@@ -65,7 +68,7 @@ public class OTPRoutingModule implements RoutingModule {
 	private CoordinateTransformation ct;
 
 	private Date day;
-
+	
 	public OTPRoutingModule(PathService pathservice, TransitSchedule transitSchedule, String date, CoordinateTransformation ct) {
 		this.pathservice = pathservice;
 		this.transitSchedule = transitSchedule;
@@ -111,8 +114,13 @@ public class OTPRoutingModule implements RoutingModule {
 
 		Coord fromCoord = ct.transform(fromFacility.getCoord());
 		Coord toCoord = ct.transform(toFacility.getCoord());
-		options.from =  fromCoord.getY() +"," +fromCoord.getX();
-		options.to   =  toCoord.getY()+ "," +  toCoord.getX();
+		// fromCoord.getY() : latitude
+		// fromCoord.getX() : longitude
+//		options.from =  fromCoord.getY() +"," +fromCoord.getX();
+//		options.to   =  toCoord.getY()+ "," +  toCoord.getX();
+		// doc: public GenericLocation(double lat, double lng)
+		options.from =  new GenericLocation(fromCoord.getY(), fromCoord.getX());
+		options.to   =  new GenericLocation(toCoord.getY(), toCoord.getX());
 		options.numItineraries = 1;
 		System.out.println("--------");
 		System.out.println("Path from " + options.from + " to " + options.to + " at " + when);
@@ -136,13 +144,14 @@ public class OTPRoutingModule implements RoutingModule {
 			for (State state : path.states) {
 				Edge backEdge = state.getBackEdge();
 				if (backEdge != null) {
-					final long travelTime = state.getElapsedTime() - time;
+					//	global replacement of "state.getElapsedTime()" with "state.getElapsedTimeSeconds()"
+					final long travelTime = state.getElapsedTimeSeconds() - time;
 					if (backEdge instanceof TransitBoardAlight) {
 						Trip backTrip = state.getBackTrip();
 						if (!onBoard) {
 							stop = ((TransitVertex) state.getVertex()).getStopId().getId();
 							onBoard = true;
-							time = state.getElapsedTime();
+							time = state.getElapsedTimeSeconds();
 							TransitStopFacility accessFacility = transitSchedule.getFacilities().get(Id.create(stop, TransitStopFacility.class));
 							if(!currentLinkId.equals(accessFacility.getLinkId())) {
 								throw new RuntimeException();
@@ -158,11 +167,11 @@ public class OTPRoutingModule implements RoutingModule {
 							leg.setTravelTime(travelTime);
 							legs.add(leg);
 							onBoard = false;
-							time = state.getElapsedTime();
+							time = state.getElapsedTimeSeconds();
 							stop = newStop;
 							currentLinkId = egressFacility.getLinkId();
 						}
-					} else if (backEdge instanceof FreeEdge || backEdge instanceof TransferEdge || backEdge instanceof PlainStreetEdge) {
+					} else if (backEdge instanceof FreeEdge || backEdge instanceof TransferEdge || backEdge instanceof StreetEdge) {
 						Leg leg = new LegImpl(TransportMode.transit_walk);
 						if (state.getVertex() instanceof TransitVertex) {
 							String newStop = ((TransitVertex) state.getVertex()).getStopId().getId();
@@ -179,7 +188,7 @@ public class OTPRoutingModule implements RoutingModule {
 								leg.setRoute(route);
 								leg.setTravelTime(travelTime);
 								legs.add(leg);
-								time = state.getElapsedTime();
+								time = state.getElapsedTimeSeconds();
 								stop = newStop;
 								currentLinkId = endLinkId;
 							}
@@ -189,11 +198,12 @@ public class OTPRoutingModule implements RoutingModule {
 							route.setTravelTime(travelTime);
 							leg.setRoute(route);
 							legs.add(leg);
-							time = state.getElapsedTime();
+							time = state.getElapsedTimeSeconds();
 							currentLinkId = toFacility.getLinkId();
 						} else if (state.getVertex() instanceof IntersectionVertex) {
 
 						} else {
+							// ElevatorOffboardVertex behandeln
 							throw new RuntimeException("Unexpected vertex: " + state.getVertex().getClass());
 						}
 

@@ -1,4 +1,4 @@
-package vbb;
+package portland;
 
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
@@ -31,7 +31,7 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * 
+ * copy of otp-matsim/vbb
  * 
  * @author mzilske
  * @author gleich
@@ -62,12 +62,12 @@ public class GenerateAndRoutePopulation {
 		Config config = ConfigUtils.createConfig();
 		config.scenario().setUseVehicles(true);
 		config.scenario().setUseTransit(true);
-		config.transit().setTransitScheduleFile("/Users/zilske/gtfs-bvg/transit-schedule.xml");
-		config.transit().setVehiclesFile("/Users/zilske/gtfs-bvg/transit-vehicles.xml");
-		config.network().setInputFile("/Users/zilske/gtfs-bvg/network.xml");
+		config.transit().setTransitScheduleFile("Z:/WinHome/otp-matsim/Portland/gtfs2matsim/transit-schedule.xml");
+		config.transit().setVehiclesFile("Z:/WinHome/otp-matsim/Portland/gtfs2matsim/transit-vehicles.xml");
+		config.network().setInputFile("Z:/WinHome/otp-matsim/Portland/gtfs2matsim/network.xml");
 		final Scenario scenario = ScenarioUtils.createScenario(config);
 
-		new MatsimNetworkReader(scenario).readFile("/Users/zilske/gtfs-bvg/network.xml");
+		new MatsimNetworkReader(scenario).readFile("Z:/WinHome/otp-matsim/Portland/gtfs2matsim/network.xml");
 		new VehicleReaderV1(((ScenarioImpl) scenario).getVehicles()).readFile(config.transit().getVehiclesFile());
 		new TransitScheduleReader(scenario).readFile(config.transit().getTransitScheduleFile());
 
@@ -78,15 +78,15 @@ public class GenerateAndRoutePopulation {
 		//	new TransitScheduleWriter(scenario.getTransitSchedule()).writeFile("/Users/zilske/gtfs-bvg/transit-schedule.xml");
 		//	new VehicleWriterV1(((ScenarioImpl) scenario).getVehicles()).writeFile("/Users/zilske/gtfs-bvg/transit-vehicles.xml");
 
-		double minX=13.1949;
-		double maxX=13.5657;
-		double minY=52.3926;
-		double maxY=52.6341;
+		double minX=-122.9271;
+		double maxX=-122.4083;
+		double minY=45.3823;
+		double maxY=45.5979;
 
 
 		population = scenario.getPopulation();
 		network = (NetworkImpl) scenario.getNetwork();
-		for (int i=0; i<10; ++i) {
+		for (int i=0; i<1000; ++i) {
 			Coord source = new CoordImpl(minX + Math.random() * (maxX - minX), minY + Math.random() * (maxY - minY));
 			Coord sink = new CoordImpl(minX + Math.random() * (maxX - minX), minY + Math.random() * (maxY - minY));
 			Person person = population.getFactory().createPerson(Id.create(Integer.toString(i), Person.class));
@@ -106,7 +106,8 @@ public class GenerateAndRoutePopulation {
 			population.addPerson(person);
 		}
 
-		final OTPTripRouterFactory trf = new OTPTripRouterFactory(scenario.getTransitSchedule(), new IdentityTransformation(), "2013-08-24", "/Users/michaelzilske/gtfs-ulm/Graph.obj");
+		final OTPTripRouterFactory trf = new OTPTripRouterFactory(scenario.getTransitSchedule(), new IdentityTransformation(), "2015-02-10", 
+				"Z:/WinHome/otp-matsim/Portland/pdx/Graph.obj");
 
 		// make sure all routes are calculated.
 		ParallelPersonAlgorithmRunner.run(population, config.global().getNumberOfThreads(),
@@ -133,7 +134,7 @@ public class GenerateAndRoutePopulation {
 			}
 		});
 
-		new PopulationWriter(population, scenario.getNetwork()).writeV5("/Users/zilske/gtfs-bvg/population.xml");
+		new PopulationWriter(population, scenario.getNetwork()).writeV5("Z:/WinHome/otp-matsim/Portland/matsim/population.xml");
 
 	}
 

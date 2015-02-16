@@ -15,18 +15,14 @@ import org.matsim.pt.router.TransitRouter;
 import org.matsim.pt.router.TransitRouterFactory;
 import org.matsim.pt.transitSchedule.api.TransitScheduleReader;
 import org.matsim.vehicles.VehicleReaderV1;
-import org.matsim.vis.otfvis.OTFVisConfigGroup;
-import org.matsim.vis.otfvis.OTFVisConfigGroup.ColoringScheme;
-import playground.mzilske.otp.OTPTripRouterFactory;
+//import org.matsim.vis.otfvis.OTFVisConfigGroup;
+//import org.matsim.vis.otfvis.OTFVisConfigGroup.ColoringScheme;
+import otp.OTPTripRouterFactory;
 
 
 public class Run {
 	
 	public static void main(String[] args) {
-
-		
-
-		
 		Config config = ConfigUtils.createConfig();
 		config.scenario().setUseVehicles(true);
 		config.scenario().setUseTransit(true);
@@ -35,8 +31,8 @@ public class Run {
 		config.qsim().setSnapshotStyle("queue");
 		config.qsim().setSnapshotPeriod(1);
 		config.qsim().setRemoveStuckVehicles(false);
-		ConfigUtils.addOrGetModule(config, OTFVisConfigGroup.GROUP_NAME, OTFVisConfigGroup.class).setColoringScheme(ColoringScheme.gtfs);
-		ConfigUtils.addOrGetModule(config, OTFVisConfigGroup.GROUP_NAME, OTFVisConfigGroup.class).setDrawTransitFacilities(false);
+//		ConfigUtils.addOrGetModule(config, OTFVisConfigGroup.GROUP_NAME, OTFVisConfigGroup.class).setColoringScheme(ColoringScheme.gtfs);
+//		ConfigUtils.addOrGetModule(config, OTFVisConfigGroup.GROUP_NAME, OTFVisConfigGroup.class).setDrawTransitFacilities(false);
 		config.transitRouter().setMaxBeelineWalkConnectionDistance(1.0);
 		
 		config.network().setInputFile("/Users/zilske/gtfs-bvg/network.xml");
@@ -70,7 +66,7 @@ public class Run {
 			}
 			
 		});
-		controler.setTripRouterFactory(new OTPTripRouterFactory(scenario.getTransitSchedule(), new IdentityTransformation(), "2013-08-24"));
+		controler.setTripRouterFactory(new OTPTripRouterFactory(scenario.getTransitSchedule(), new IdentityTransformation(), "2013-08-24", "/Users/michaelzilske/gtfs-ulm/Graph.obj"));
 		
 		controler.run();
 

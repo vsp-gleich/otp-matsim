@@ -15,7 +15,7 @@ import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.core.utils.geometry.CoordImpl;
 import org.matsim.core.utils.geometry.CoordinateTransformation;
 import org.matsim.core.utils.geometry.transformations.TransformationFactory;
-import org.opentripplanner.routing.edgetype.PlainStreetEdge;
+import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.edgetype.StreetTransitLink;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
@@ -42,7 +42,7 @@ public class ReadGraph {
 			for (Vertex v : graph.getVertices()) {
 				if (v instanceof IntersectionVertex) {
 					for (Edge e : v.getOutgoing()) {
-						if (e instanceof PlainStreetEdge) {
+						if (e instanceof StreetEdge) {
 							Node fromNode = network.getNodes().get(Id.create(e.getFromVertex().getIndex(), Node.class));
 							Node toNode = network.getNodes().get(Id.create(e.getToVertex().getIndex(), Node.class));
 							Link l = network.getFactory().createLink(Id.create(e.getFromVertex().getIndex() + "_" + e.getToVertex().getIndex()+ "_" + i++, Link.class), fromNode, toNode);
