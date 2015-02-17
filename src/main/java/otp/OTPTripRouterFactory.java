@@ -14,42 +14,45 @@ import org.opentripplanner.routing.impl.GenericAStarFactory;
 import org.opentripplanner.routing.impl.GraphServiceImpl;
 import org.opentripplanner.routing.impl.RetryingPathServiceImpl;
 import org.opentripplanner.routing.impl.SPTServiceFactory;
+import org.opentripplanner.routing.services.GraphService;
+import org.opentripplanner.routing.services.PathService;
 
 public final class OTPTripRouterFactory implements
 		TripRouterFactory {
 	// TripRouterFactory: Matsim interface for routers
 	
-	private Graph graph;
 	private CoordinateTransformation ct;
 	private String day;
-	private RetryingPathServiceImpl pathservice;
-//	private GenericAStar sptService = new GenericAStar();
-	private SPTServiceFactory sptService = new GenericAStarFactory();
-	private TransitSchedule transitSchedule;
+	private PathService pathservice;
+    private TransitSchedule transitSchedule;
 	
 
 	public OTPTripRouterFactory(TransitSchedule transitSchedule, CoordinateTransformation ct, String day, String graphFile) {
-		File path = new File(graphFile);
-		try {
-			graph = Graph.load(path, Graph.LoadLevel.FULL);
-		} catch (IOException e) {
-			throw new RuntimeException(e);
-		} catch (ClassNotFoundException e) {
-			throw new RuntimeException();
-		}
-		pathservice = new RetryingPathServiceImpl(graphservice, sptService);
+        GraphService graphservice = createGraphService(graphFile);
+        SPTServiceFactory sptService = new GenericAStarFactory();
+        pathservice = new RetryingPathServiceImpl(graphservice, sptService);
 		this.transitSchedule = transitSchedule;
 		this.ct = ct;
 		this.day = day;
 	}
 
-	private GraphServiceImpl graphservice = new GraphServiceImpl() {
-		public Graph getGraph(String routerId) { return graph; }
-	};
+    public static GraphService createGraphService(String graphFile) {
+        try {
+            final Graph graph = Graph.load(new File(graphFile), Graph.LoadLevel.FULL);
+            return new GraphServiceImpl() {
+                public Graph getGraph(String routerId) {
+                    return graph;
+                }
+            };
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException();
+        }
+    }
 
 
-	
-	@Override
+    @Override
 	public TripRouter instantiateAndConfigureTripRouter(RoutingContext iterationContext) {
 		TripRouter tripRouter = new TripRouter();
 		tripRouter.setRoutingModule("pt", new OTPRoutingModule(pathservice, transitSchedule, day, ct));

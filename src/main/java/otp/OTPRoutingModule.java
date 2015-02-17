@@ -1,15 +1,5 @@
 package otp;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.Arrays;
-import java.util.Calendar;
-import java.util.Collections;
-import java.util.Date;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.TimeZone;
-
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.TransportMode;
@@ -27,12 +17,7 @@ import org.matsim.core.utils.geometry.CoordinateTransformation;
 import org.matsim.pt.PtConstants;
 import org.matsim.pt.routes.ExperimentalTransitRoute;
 import org.matsim.pt.transitSchedule.TransitScheduleFactoryImpl;
-import org.matsim.pt.transitSchedule.api.TransitLine;
-import org.matsim.pt.transitSchedule.api.TransitRoute;
-import org.matsim.pt.transitSchedule.api.TransitRouteStop;
-import org.matsim.pt.transitSchedule.api.TransitSchedule;
-import org.matsim.pt.transitSchedule.api.TransitScheduleFactory;
-import org.matsim.pt.transitSchedule.api.TransitStopFacility;
+import org.matsim.pt.transitSchedule.api.*;
 import org.onebusaway.gtfs.model.Trip;
 import org.opentripplanner.common.model.GenericLocation;
 import org.opentripplanner.routing.core.OptimizeType;
@@ -41,11 +26,8 @@ import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.core.TraverseModeSet;
 import org.opentripplanner.routing.edgetype.FreeEdge;
 import org.opentripplanner.routing.edgetype.StreetEdge;
-// included in opentripplanner 0.11.0, but not in 0.12.0 where class StreetEdge with the same author and description replaces an abstract class StreetEdge
-//import org.opentripplanner.routing.edgetype.PlainStreetEdge;
 import org.opentripplanner.routing.edgetype.TransferEdge;
 import org.opentripplanner.routing.edgetype.TransitBoardAlight;
-import org.opentripplanner.routing.error.VertexNotFoundException;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.location.StreetLocation;
 import org.opentripplanner.routing.services.PathService;
@@ -53,9 +35,23 @@ import org.opentripplanner.routing.spt.GraphPath;
 import org.opentripplanner.routing.vertextype.IntersectionVertex;
 import org.opentripplanner.routing.vertextype.TransitVertex;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.*;
+
 public class OTPRoutingModule implements RoutingModule {
 
-	private int nonefound = 0;
+    // Mode used for trips inserted "by hand" (not coming from OTP)
+    // to get the agent to/from the beginning/end of the OTP-trip.
+    public static final String TELEPORT = "teleport";
+
+    // Trips on pt lines according to the TransitSchedule.
+    public static final String PT = "pt";
+
+    // Line switches by OTP.
+    public static final String TRANSIT_WALK = "transit_walk";
+
+    private int nonefound = 0;
 
 	private int npersons = 0;
 
@@ -65,14 +61,14 @@ public class OTPRoutingModule implements RoutingModule {
 
 	private TransitSchedule transitSchedule;
 
-	private CoordinateTransformation ct;
+	private CoordinateTransformation transitScheduleToPathServiceCt;
 
 	private Date day;
 	
 	public OTPRoutingModule(PathService pathservice, TransitSchedule transitSchedule, String date, CoordinateTransformation ct) {
 		this.pathservice = pathservice;
 		this.transitSchedule = transitSchedule;
-		this.ct = ct;
+		this.transitScheduleToPathServiceCt = ct;
 		try {
 			SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd");
 			df.setTimeZone(TimeZone.getTimeZone("Europe/Berlin"));
@@ -84,11 +80,34 @@ public class OTPRoutingModule implements RoutingModule {
 
 	@Override
 	public List<? extends PlanElement> calcRoute(Facility fromFacility, Facility toFacility, double departureTime, Person person) {
-		LinkedList<Leg> baseTrip = routeLeg(fromFacility, toFacility, departureTime);
-		return baseTrip;
+        List<Leg> baseTrip = routeLeg(fromFacility, toFacility, departureTime);
+        if (baseTrip.isEmpty()) {
+            return createTeleportationTrip(fromFacility.getLinkId(), toFacility.getLinkId());
+        } else {
+            List<Leg> entireTrip = new ArrayList<>();
+            Id<Link> baseTripStartLink = baseTrip.get(0).getRoute().getStartLinkId();
+            List<Leg> accessTrip = createTeleportationTrip(fromFacility.getLinkId(), baseTripStartLink);
+            Id<Link> baseTripEndLink = baseTrip.get(baseTrip.size()-1).getRoute().getEndLinkId();
+            List<Leg> egressTrip = createTeleportationTrip(baseTripEndLink, toFacility.getLinkId());
+            entireTrip.addAll(accessTrip);
+            entireTrip.addAll(baseTrip);
+            entireTrip.addAll(egressTrip);
+            return entireTrip;
+        }
 	}
 
-	@Override
+    private List<Leg> createTeleportationTrip(Id<Link> startLinkId, Id<Link> endLinkId) {
+        List<Leg> egressTrip = new ArrayList<>();
+        if (!startLinkId.equals(endLinkId)) {
+            Leg leg = new LegImpl(TELEPORT);
+            GenericRouteImpl route = new GenericRouteImpl(startLinkId, endLinkId);
+            leg.setRoute(route);
+            egressTrip.add(leg);
+        }
+        return egressTrip;
+    }
+
+    @Override
 	public StageActivityTypes getStageActivityTypes() {
 		return new StageActivityTypesImpl( Arrays.asList( PtConstants.TRANSIT_ACTIVITY_TYPE ) );
 	}
@@ -105,20 +124,13 @@ public class OTPRoutingModule implements RoutingModule {
 		options.setMaxWalkDistance(Double.MAX_VALUE);
 		 
 		Calendar when = Calendar.getInstance();
-
 		when.setTimeZone(TimeZone.getTimeZone("Europe/Berlin"));
 		when.setTime(day);
 		when.add(Calendar.SECOND, (int) departureTime);
-		
 		options.setDateTime(when.getTime());
 
-		Coord fromCoord = ct.transform(fromFacility.getCoord());
-		Coord toCoord = ct.transform(toFacility.getCoord());
-		// fromCoord.getY() : latitude
-		// fromCoord.getX() : longitude
-//		options.from =  fromCoord.getY() +"," +fromCoord.getX();
-//		options.to   =  toCoord.getY()+ "," +  toCoord.getX();
-		// doc: public GenericLocation(double lat, double lng)
+		Coord fromCoord = transitScheduleToPathServiceCt.transform(fromFacility.getCoord());
+		Coord toCoord = transitScheduleToPathServiceCt.transform(toFacility.getCoord());
 		options.from =  new GenericLocation(fromCoord.getY(), fromCoord.getX());
 		options.to   =  new GenericLocation(toCoord.getY(), toCoord.getX());
 		options.numItineraries = 1;
@@ -127,14 +139,9 @@ public class OTPRoutingModule implements RoutingModule {
 		System.out.println("\tModes: " + modeSet);
 		System.out.println("\tOptions: " + options);
 
-		List<GraphPath> paths = null;
-		try {
-			paths = pathservice.getPaths(options);
-		} catch (VertexNotFoundException e) {
-			System.out.println("None found " + nonefound++);
-		}
+		List<GraphPath> paths = pathservice.getPaths(options);
 
-		Id<Link> currentLinkId = fromFacility.getLinkId();
+		Id<Link> currentLinkId = null;
 		if (paths != null) {
 			GraphPath path = paths.get(0);
 			path.dump();
@@ -142,87 +149,62 @@ public class OTPRoutingModule implements RoutingModule {
 			String stop = null;
 			long time = 0;
 			for (State state : path.states) {
-				Edge backEdge = state.getBackEdge();
-				if (backEdge != null) {
-					//	global replacement of "state.getElapsedTime()" with "state.getElapsedTimeSeconds()"
-					final long travelTime = state.getElapsedTimeSeconds() - time;
-					if (backEdge instanceof TransitBoardAlight) {
-						Trip backTrip = state.getBackTrip();
-						if (!onBoard) {
-							stop = ((TransitVertex) state.getVertex()).getStopId().getId();
-							onBoard = true;
-							time = state.getElapsedTimeSeconds();
-							TransitStopFacility accessFacility = transitSchedule.getFacilities().get(Id.create(stop, TransitStopFacility.class));
-							if(!currentLinkId.equals(accessFacility.getLinkId())) {
-								throw new RuntimeException();
-							}
-						} else {
-							Leg leg = new LegImpl(TransportMode.pt);
-							String newStop = ((TransitVertex) state.getVertex()).getStopId().getId();
-							TransitStopFacility accessFacility = transitSchedule.getFacilities().get(Id.create(stop, TransitStopFacility.class));
-							TransitStopFacility egressFacility = transitSchedule.getFacilities().get(Id.create(newStop, TransitStopFacility.class));
-							final ExperimentalTransitRoute route = new ExperimentalTransitRoute(accessFacility, createLine(backTrip), createRoute(), egressFacility);
-							route.setTravelTime(travelTime);
-							leg.setRoute(route);
-							leg.setTravelTime(travelTime);
-							legs.add(leg);
-							onBoard = false;
-							time = state.getElapsedTimeSeconds();
-							stop = newStop;
-							currentLinkId = egressFacility.getLinkId();
-						}
-					} else if (backEdge instanceof FreeEdge || backEdge instanceof TransferEdge || backEdge instanceof StreetEdge) {
-						Leg leg = new LegImpl(TransportMode.transit_walk);
-						if (state.getVertex() instanceof TransitVertex) {
-							String newStop = ((TransitVertex) state.getVertex()).getStopId().getId();
-							if (!newStop.equals(stop)) {
-								Id<Link> startLinkId;
-								if (stop == null) {
-									startLinkId = fromFacility.getLinkId();
-								} else {
-									startLinkId = transitSchedule.getFacilities().get(Id.create(stop, TransitStopFacility.class)).getLinkId();
-								}
-								Id<Link> endLinkId = transitSchedule.getFacilities().get(Id.create(newStop, TransitStopFacility.class)).getLinkId();
-								GenericRouteImpl route = new GenericRouteImpl(startLinkId, endLinkId);
-								route.setTravelTime(travelTime);
-								leg.setRoute(route);
-								leg.setTravelTime(travelTime);
-								legs.add(leg);
-								time = state.getElapsedTimeSeconds();
-								stop = newStop;
-								currentLinkId = endLinkId;
-							}
-						} else if (state.getVertex() instanceof StreetLocation) {
-							System.out.println("Wir sind da.");
-							GenericRouteImpl route = new GenericRouteImpl(currentLinkId, toFacility.getLinkId());
-							route.setTravelTime(travelTime);
-							leg.setRoute(route);
-							legs.add(leg);
-							time = state.getElapsedTimeSeconds();
-							currentLinkId = toFacility.getLinkId();
-						} else if (state.getVertex() instanceof IntersectionVertex) {
+                Edge backEdge = state.getBackEdge();
+                if (backEdge != null) {
+                    final long travelTime = state.getElapsedTimeSeconds() - time;
+                    if (backEdge instanceof TransitBoardAlight) {
+                        Trip backTrip = state.getBackTrip();
+                        if (!onBoard) {
+                            stop = ((TransitVertex) state.getVertex()).getStopId().getId();
+                            onBoard = true;
+                            time = state.getElapsedTimeSeconds();
+                            TransitStopFacility accessFacility = transitSchedule.getFacilities().get(Id.create(stop, TransitStopFacility.class));
+                            if (!currentLinkId.equals(accessFacility.getLinkId())) {
+                                throw new RuntimeException();
+                            }
+                        } else {
+                            Leg leg = new LegImpl(PT);
+                            String newStop = ((TransitVertex) state.getVertex()).getStopId().getId();
+                            TransitStopFacility accessFacility = transitSchedule.getFacilities().get(Id.create(stop, TransitStopFacility.class));
+                            TransitStopFacility egressFacility = transitSchedule.getFacilities().get(Id.create(newStop, TransitStopFacility.class));
+                            final ExperimentalTransitRoute route = new ExperimentalTransitRoute(accessFacility, createLine(backTrip), createRoute(), egressFacility);
+                            route.setTravelTime(travelTime);
+                            leg.setRoute(route);
+                            leg.setTravelTime(travelTime);
+                            legs.add(leg);
+                            onBoard = false;
+                            time = state.getElapsedTimeSeconds();
+                            stop = newStop;
+                            currentLinkId = egressFacility.getLinkId();
+                        }
+                    } else if (backEdge instanceof FreeEdge || backEdge instanceof TransferEdge || backEdge instanceof StreetEdge) {
+                        Leg leg = new LegImpl(TRANSIT_WALK);
+                        if (state.getVertex() instanceof TransitVertex) {
+                            String newStop = ((TransitVertex) state.getVertex()).getStopId().getId();
+                            if (!newStop.equals(stop)) {
+                                Id<Link> startLinkId = currentLinkId;
+                                Id<Link> endLinkId = transitSchedule.getFacilities().get(Id.create(newStop, TransitStopFacility.class)).getLinkId();
+                                if (currentLinkId != null) {
+                                    GenericRouteImpl route = new GenericRouteImpl(startLinkId, endLinkId);
+                                    route.setTravelTime(travelTime);
+                                    leg.setRoute(route);
+                                    leg.setTravelTime(travelTime);
+                                    legs.add(leg);
+                                }
+                                time = state.getElapsedTimeSeconds();
+                                stop = newStop;
+                                currentLinkId = endLinkId;
+                            }
+                        }
+                    }
+                }
 
-						} else {
-							// ElevatorOffboardVertex behandeln
-							throw new RuntimeException("Unexpected vertex: " + state.getVertex().getClass());
-						}
-
-					} 
-				}
-
-			}
-			if (!currentLinkId.equals(toFacility.getLinkId())) {
-				throw new RuntimeException();
-			}
-
+            }
 		} else {
 			System.out.println("None found " + nonefound++);
 		}
 		System.out.println("---------" + npersons++);
 
-		if (!currentLinkId.equals(toFacility.getLinkId())) {
-
-		}
 		return legs;
 	}
 
