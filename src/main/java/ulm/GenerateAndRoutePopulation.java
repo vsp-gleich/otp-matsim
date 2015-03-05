@@ -59,7 +59,7 @@ public class GenerateAndRoutePopulation {
         facs = new ArrayList<>(scenario.getTransitSchedule().getFacilities().values());
         System.out.println("Scenario has " + scenario.getNetwork().getLinks().size() + " links.");
 
-        for (int i=0; i<100; ++i) {
+        for (int i=0; i<10; ++i) {
 			Coord source = randomCoord();
 			Coord sink = randomCoord();
 			Person person = scenario.getPopulation().getFactory().createPerson(Id.create(Integer.toString(i), Person.class));
@@ -82,7 +82,7 @@ public class GenerateAndRoutePopulation {
 		final OTPTripRouterFactory trf = new OTPTripRouterFactory(scenario.getTransitSchedule(),
                 TransformationFactory.getCoordinateTransformation(Consts.TARGET_SCENARIO_COORDINATE_SYSTEM, TransformationFactory.WGS84),
                 "2014-05-01",
-                "/Users/michaelzilske/gtfs-ulm/Graph.obj");
+                Consts.OTP_GRAPH_FILE);
 
 		// make sure all routes are calculated.
 		ParallelPersonAlgorithmRunner.run(scenario.getPopulation(), config.global().getNumberOfThreads(),
@@ -109,7 +109,7 @@ public class GenerateAndRoutePopulation {
 			}
 		});
 
-		new PopulationWriter(scenario.getPopulation(), scenario.getNetwork()).writeV5("output/population.xml");
+		new PopulationWriter(scenario.getPopulation(), scenario.getNetwork()).writeV5(Consts.POPULATION_FILE);
 
 	}
 

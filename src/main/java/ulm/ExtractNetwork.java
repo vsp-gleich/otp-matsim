@@ -14,6 +14,7 @@ public class ExtractNetwork {
         readGraph.run();
         new NetworkWriter(readGraph.getStreetNetworkScenario().getNetwork()).write(Consts.STREET_NETWORK_FILE);
         new NetworkWriter(readGraph.getDummyPtScenario().getNetwork()).write(Consts.DUMMY_NETWORK_FILE);
+        // Writes only transitStops
         new TransitScheduleWriter(readGraph.getDummyPtScenario().getTransitSchedule()).writeFile(Consts.TRANSIT_SCHEDULE_FILE);
     }
 
