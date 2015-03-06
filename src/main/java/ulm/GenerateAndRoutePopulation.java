@@ -50,8 +50,8 @@ public class GenerateAndRoutePopulation {
 		Config config = ConfigUtils.createConfig();
 		config.scenario().setUseVehicles(true);
 		config.scenario().setUseTransit(true);
-		config.transit().setTransitScheduleFile(Consts.TRANSIT_SCHEDULE_FILE);
-		config.network().setInputFile(Consts.DUMMY_NETWORK_FILE);
+		config.transit().setTransitScheduleFile(Consts.GTFS2MATSIM_TRANSIT_SCHEDULE_FILE);
+		config.network().setInputFile(Consts.GTFS2MATSIM_NETWORK_FILE);
         scenario = ScenarioUtils.createScenario(config);
 
 		new MatsimNetworkReader(scenario).readFile(config.network().getInputFile());
