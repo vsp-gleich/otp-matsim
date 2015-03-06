@@ -35,8 +35,8 @@ public class RunScenarioBasedOnOtpOutput {
 		config.qsim().setRemoveStuckVehicles(false);
 		config.transitRouter().setMaxBeelineWalkConnectionDistance(1.0);
 		
-		config.network().setInputFile(Consts.DUMMY_NETWORK_FILE);
-		config.transit().setTransitScheduleFile(Consts.TRANSIT_SCHEDULE_FILE);
+		config.network().setInputFile(Consts.GTFS2MATSIM_NETWORK_FILE);
+		config.transit().setTransitScheduleFile(Consts.GTFS2MATSIM_TRANSIT_SCHEDULE_FILE);
 		config.transit().setVehiclesFile(Consts.GTFS2MATSIM_TRANSIT_VEHICLE_FILE);
 		config.plans().setInputFile(Consts.POPULATION_FILE);
 		config.controler().setOutputDirectory(Consts.BASEDIR + "testOneIteration");
@@ -70,7 +70,7 @@ public class RunScenarioBasedOnOtpOutput {
 		Scenario scenario = ScenarioUtils.createScenario(config);
 		
 		new MatsimNetworkReader(scenario).readFile(config.network().getInputFile());
-		new VehicleReaderV1(((ScenarioImpl) scenario).getVehicles()).readFile(config.transit().getVehiclesFile());
+		new VehicleReaderV1(((ScenarioImpl) scenario).getTransitVehicles()).readFile(config.transit().getVehiclesFile());
 		new TransitScheduleReader(scenario).readFile(config.transit().getTransitScheduleFile());
 		new PopulationReaderMatsimV5(scenario).readFile(config.plans().getInputFile());
 		

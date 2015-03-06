@@ -16,6 +16,8 @@ public class Consts {
     public static final String DUMMY_NETWORK_FILE = "output/extracted-dummy-pt-network.xml";
     /** Created by ExtractNetwork */
     public static final String STREET_NETWORK_FILE = "output/extracted-street-network.xml";
+    /** Created with playground.mzilske.gtfs.GtfsConverter has more links than the dummy network */
+    public static final String GTFS2MATSIM_NETWORK_FILE = "output/gtfs2matsim/network.xml";
     public static final String OTP_GRAPH_FILE = "output/Graph.obj";
     public static final String POPULATION_FILE = "output/population.xml";
 
