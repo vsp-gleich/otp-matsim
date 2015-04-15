@@ -167,7 +167,8 @@ public class OTPRoutingModule implements RoutingModule {
                             String newStop = ((TransitVertex) state.getVertex()).getStopId().getId();
                             TransitStopFacility accessFacility = transitSchedule.getFacilities().get(Id.create(stop, TransitStopFacility.class));
                             TransitStopFacility egressFacility = transitSchedule.getFacilities().get(Id.create(newStop, TransitStopFacility.class));
-                            final ExperimentalTransitRoute route = new ExperimentalTransitRoute(accessFacility, createLine(backTrip), createRoute(), egressFacility);
+                            final ExperimentalTransitRoute route = new ExperimentalTransitRoute( 
+                            		accessFacility, createLine(backTrip), createRoute(backTrip), egressFacility);
                             route.setTravelTime(travelTime);
                             leg.setRoute(route);
                             leg.setTravelTime(travelTime);
@@ -208,9 +209,17 @@ public class OTPRoutingModule implements RoutingModule {
 		return legs;
 	}
 
-	private TransitRoute createRoute() {
+	private TransitRoute createRoute(Trip backTrip) {
 		List<TransitRouteStop> emptyList = Collections.emptyList();
-		return tsf.createTransitRoute(Id.create("", TransitRoute.class), null , emptyList, null);
+		Id<TransitLine> tlId = Id.create(backTrip.getRoute().getId().getId()+ "_"+backTrip.getRoute().getShortName(), TransitLine.class);
+		Id<TransitRoute> trId = Id.create("", TransitRoute.class);
+		for(TransitRoute tr: transitSchedule.getTransitLines().get(tlId).getRoutes().values()){
+			if(tr.getDepartures().containsKey(Id.create(backTrip.getId().getId(), Departure.class))){
+				trId = tr.getId();
+				break;
+			}
+		}
+		return tsf.createTransitRoute(trId, null , emptyList, null);
 	}
 
 	private TransitLine createLine(Trip backTrip) {
