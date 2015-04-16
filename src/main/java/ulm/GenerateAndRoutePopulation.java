@@ -81,7 +81,7 @@ public class GenerateAndRoutePopulation {
 
 		final OTPTripRouterFactory trf = new OTPTripRouterFactory(scenario.getTransitSchedule(),
                 TransformationFactory.getCoordinateTransformation(Consts.TARGET_SCENARIO_COORDINATE_SYSTEM, TransformationFactory.WGS84),
-                "2014-05-01",
+                "2014-02-10",
                 Consts.OTP_GRAPH_FILE);
 
 		// make sure all routes are calculated.

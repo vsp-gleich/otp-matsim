@@ -15,6 +15,7 @@ import org.matsim.core.population.PopulationReaderMatsimV5;
 import org.matsim.core.scenario.ScenarioImpl;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.core.utils.geometry.transformations.IdentityTransformation;
+import org.matsim.core.utils.geometry.transformations.TransformationFactory;
 import org.matsim.pt.router.TransitRouter;
 import org.matsim.pt.router.TransitRouterFactory;
 import org.matsim.pt.transitSchedule.api.TransitScheduleReader;
@@ -86,7 +87,10 @@ public class RunScenarioBasedOnOtpOutput {
 			}
 			
 		});
-		controler.setTripRouterFactory(new OTPTripRouterFactory(scenario.getTransitSchedule(), new IdentityTransformation(), "2014-02-10", Consts.OTP_GRAPH_FILE));
+		controler.setTripRouterFactory(new OTPTripRouterFactory(scenario.getTransitSchedule(),
+                TransformationFactory.getCoordinateTransformation(Consts.TARGET_SCENARIO_COORDINATE_SYSTEM, TransformationFactory.WGS84),
+                "2014-02-10",
+                Consts.OTP_GRAPH_FILE));
 		
 		config.controler().setWriteEventsInterval(1);		
 		config.controler().setLastIteration(10);
