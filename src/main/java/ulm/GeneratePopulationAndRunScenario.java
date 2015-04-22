@@ -51,9 +51,8 @@ public class GeneratePopulationAndRunScenario {
 		Config config = ConfigUtils.createConfig();
 		config.scenario().setUseVehicles(true);
 		config.scenario().setUseTransit(true);
-		config.transit().setTransitScheduleFile(Consts.GTFS2MATSIM_TRANSIT_SCHEDULE_FILE);
-		config.network().setInputFile(Consts.GTFS2MATSIM_NETWORK_FILE);
-		config.transit().setVehiclesFile(Consts.GTFS2MATSIM_TRANSIT_VEHICLE_FILE);
+		config.transit().setTransitScheduleFile(Consts.TRANSIT_SCHEDULE_FILE);
+		config.network().setInputFile(Consts.NETWORK_FILE);
 		
 		config.controler().setMobsim("qsim");
 		config.controler().setLastIteration(0);
@@ -64,7 +63,8 @@ public class GeneratePopulationAndRunScenario {
 		config.controler().setOutputDirectory(Consts.BASEDIR + "testOneIteration");
 		
 		config.controler().setWriteEventsInterval(1);		
-		config.controler().setLastIteration(10);
+		config.controler().setLastIteration(0);
+		config.controler().setWritePlansInterval(1);
 		
 		ActivityParams home = new ActivityParams("home");
 		home.setTypicalDuration(12*60*60);
@@ -73,6 +73,7 @@ public class GeneratePopulationAndRunScenario {
 		work.setTypicalDuration(8*60*60);
 		config.planCalcScore().addActivityParams(work);
 		config.planCalcScore().setWriteExperiencedPlans(true);
+
 		
 //		StrategySettings stratSets = new StrategySettings(Id.create("1", StrategySettings.class));
 //		stratSets.setStrategyName("ReRoute");
@@ -89,7 +90,7 @@ public class GeneratePopulationAndRunScenario {
 
 		new MatsimNetworkReader(scenario).readFile(config.network().getInputFile());
 		new TransitScheduleReader(scenario).readFile(config.transit().getTransitScheduleFile());
-		new VehicleReaderV1(((ScenarioImpl) scenario).getTransitVehicles()).readFile(config.transit().getVehiclesFile());
+		// new VehicleReaderV1(((ScenarioImpl) scenario).getTransitVehicles()).readFile(config.transit().getVehiclesFile());
 		
         facs = new ArrayList<>(scenario.getTransitSchedule().getFacilities().values());
         System.out.println("Scenario has " + scenario.getNetwork().getLinks().size() + " links.");
@@ -146,29 +147,27 @@ public class GeneratePopulationAndRunScenario {
 
     private Coord randomCoord() {
         int nFac = (int) (facs.size() * Math.random());
-        return facs.get(nFac).getCoord();
+        Coord coordsOfATransitStop = facs.get(nFac).getCoord();
+        coordsOfATransitStop.setXY(coordsOfATransitStop.getX() + Math.random() * 1000 - 500, coordsOfATransitStop.getY() + Math.random() * 1000 - 500);
+        // People live within 1 km of transit stops. :-)
+		return coordsOfATransitStop;
     }
 
 	private Activity createWork(Coord workLocation) {
 		Activity activity = scenario.getPopulation().getFactory().createActivityFromCoord("work", workLocation);
 		activity.setEndTime(17*60*60);
-        ((ActivityImpl) activity).setLinkId(((NetworkImpl) scenario.getNetwork()).getNearestLinkExactly(workLocation).getId());
 		return activity;
 	}
 
 	private Activity createHomeStart(Coord homeLocation) {
 		Activity activity = scenario.getPopulation().getFactory().createActivityFromCoord("home", homeLocation);
 		activity.setEndTime(9*60*60);
-        Link link = ((NetworkImpl) scenario.getNetwork()).getNearestLinkExactly(homeLocation);
-		((ActivityImpl) activity).setLinkId(link.getId());
 		return activity;
 	}
 	
 	private Activity createHomeEnd(Coord homeLocation) {
 		Activity activity = scenario.getPopulation().getFactory().createActivityFromCoord("home", homeLocation);
 		activity.setEndTime(Double.POSITIVE_INFINITY);
-        Link link = ((NetworkImpl) scenario.getNetwork()).getNearestLinkExactly(homeLocation);
-		((ActivityImpl) activity).setLinkId(link.getId());
 		return activity;
 	}
 

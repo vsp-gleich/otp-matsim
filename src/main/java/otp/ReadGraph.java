@@ -80,7 +80,7 @@ public class ReadGraph implements Runnable {
         for (Vertex v : graphService.getGraph().getVertices()) {
             if (v instanceof IntersectionVertex) {
                 // Can be an OSM node, but can also be a split OSM way to insert a transit stop.
-                Node n = network.getFactory().createNode(Id.create(v.getIndex(), Node.class), new CoordImpl(v.getY(), v.getX()));
+                Node n = network.getFactory().createNode(Id.create(v.getIndex(), Node.class), ct.transform(new CoordImpl(v.getX(), v.getY())));
                 network.addNode(n);
             }
             System.out.println(v + v.getClass().toString());

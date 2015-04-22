@@ -46,10 +46,10 @@ public class OTPRoutingModule implements RoutingModule {
     public static final String TELEPORT = "teleport";
 
     // Trips on pt lines according to the TransitSchedule.
-    public static final String PT = "pt";
+    public static final String PT = "pseudo_pt";
 
     // Line switches by OTP.
-    public static final String TRANSIT_WALK = "transit_walk";
+    public static final String TRANSIT_WALK = "walk";
 
     private int nonefound = 0;
 
@@ -101,6 +101,9 @@ public class OTPRoutingModule implements RoutingModule {
         if (!startLinkId.equals(endLinkId)) {
             Leg leg = new LegImpl(TELEPORT);
             GenericRouteImpl route = new GenericRouteImpl(startLinkId, endLinkId);
+//            link Coords seem to be not accessible via pathservice
+//            set teleport travel time to 0
+            route.setTravelTime(0);
             leg.setRoute(route);
             egressTrip.add(leg);
         }
@@ -149,6 +152,7 @@ public class OTPRoutingModule implements RoutingModule {
 			String stop = null;
 			long time = 0;
 			for (State state : path.states) {
+				System.out.println(state);
                 Edge backEdge = state.getBackEdge();
                 if (backEdge != null) {
                     final long travelTime = state.getElapsedTimeSeconds() - time;
@@ -188,6 +192,7 @@ public class OTPRoutingModule implements RoutingModule {
                                 if (currentLinkId != null) {
                                     GenericRouteImpl route = new GenericRouteImpl(startLinkId, endLinkId);
                                     route.setTravelTime(travelTime);
+                                    route.setDistance(state.getWalkSinceLastTransit());
                                     leg.setRoute(route);
                                     leg.setTravelTime(travelTime);
                                     legs.add(leg);
@@ -213,12 +218,12 @@ public class OTPRoutingModule implements RoutingModule {
 		List<TransitRouteStop> emptyList = Collections.emptyList();
 		Id<TransitLine> tlId = Id.create(backTrip.getRoute().getId().getId()+ "_"+backTrip.getRoute().getShortName(), TransitLine.class);
 		Id<TransitRoute> trId = Id.create("", TransitRoute.class);
-		for(TransitRoute tr: transitSchedule.getTransitLines().get(tlId).getRoutes().values()){
-			if(tr.getDepartures().containsKey(Id.create(backTrip.getId().getId(), Departure.class))){
-				trId = tr.getId();
-				break;
-			}
-		}
+//		for(TransitRoute tr: transitSchedule.getTransitLines().get(tlId).getRoutes().values()){
+//			if(tr.getDepartures().containsKey(Id.create(backTrip.getId().getId(), Departure.class))){
+//				trId = tr.getId();
+//				break;
+//			}
+//		}
 		return tsf.createTransitRoute(trId, null , emptyList, null);
 	}
 
