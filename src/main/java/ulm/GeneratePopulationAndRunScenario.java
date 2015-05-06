@@ -1,37 +1,37 @@
 package ulm;
 
-import org.matsim.api.core.v01.Coord;
-import org.matsim.api.core.v01.Id;
-import org.matsim.api.core.v01.Scenario;
-import org.matsim.api.core.v01.TransportMode;
-import org.matsim.api.core.v01.network.Link;
-import org.matsim.api.core.v01.population.*;
-import org.matsim.core.config.Config;
-import org.matsim.core.config.ConfigUtils;
-import org.matsim.core.config.groups.PlanCalcScoreConfigGroup.ActivityParams;
-import org.matsim.core.config.groups.PlansCalcRouteConfigGroup.ModeRoutingParams;
-import org.matsim.core.config.groups.StrategyConfigGroup.StrategySettings;
-import org.matsim.core.controler.Controler;
-import org.matsim.core.network.MatsimNetworkReader;
-import org.matsim.core.network.NetworkImpl;
-import org.matsim.core.population.ActivityImpl;
-import org.matsim.core.scenario.ScenarioImpl;
-import org.matsim.core.scenario.ScenarioUtils;
-import org.matsim.core.utils.geometry.transformations.TransformationFactory;
-import org.matsim.pt.router.TransitRouter;
-import org.matsim.pt.router.TransitRouterFactory;
-import org.matsim.pt.transitSchedule.api.TransitScheduleReader;
-import org.matsim.pt.transitSchedule.api.TransitStopFacility;
-import org.matsim.vehicles.VehicleReaderV1;
-
-import otp.OTPTripRouterFactory;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
+
+import javax.inject.Provider;
+
+import org.matsim.api.core.v01.Coord;
+import org.matsim.api.core.v01.Id;
+import org.matsim.api.core.v01.Scenario;
+import org.matsim.api.core.v01.TransportMode;
+import org.matsim.api.core.v01.population.Activity;
+import org.matsim.api.core.v01.population.Leg;
+import org.matsim.api.core.v01.population.Person;
+import org.matsim.api.core.v01.population.Plan;
+import org.matsim.api.core.v01.population.PopulationWriter;
+import org.matsim.core.config.Config;
+import org.matsim.core.config.ConfigUtils;
+import org.matsim.core.config.groups.PlanCalcScoreConfigGroup.ActivityParams;
+import org.matsim.core.config.groups.StrategyConfigGroup.StrategySettings;
+import org.matsim.core.controler.AbstractModule;
+import org.matsim.core.controler.Controler;
+import org.matsim.core.network.MatsimNetworkReader;
+import org.matsim.core.scenario.ScenarioUtils;
+import org.matsim.core.utils.geometry.CoordImpl;
+import org.matsim.core.utils.geometry.transformations.TransformationFactory;
+import org.matsim.pt.router.TransitRouter;
+import org.matsim.pt.transitSchedule.api.TransitScheduleReader;
+import org.matsim.pt.transitSchedule.api.TransitStopFacility;
+
+import otp.OTPTripRouterFactory;
 
 /**
  * 
@@ -96,19 +96,22 @@ public class GeneratePopulationAndRunScenario {
         System.out.println("Scenario has " + scenario.getNetwork().getLinks().size() + " links.");
 
 		final OTPTripRouterFactory trf = new OTPTripRouterFactory(scenario.getTransitSchedule(),
-                TransformationFactory.getCoordinateTransformation(Consts.TARGET_SCENARIO_COORDINATE_SYSTEM, TransformationFactory.WGS84),
+				scenario.getNetwork(), TransformationFactory.getCoordinateTransformation( 
+						Consts.TARGET_SCENARIO_COORDINATE_SYSTEM, TransformationFactory.WGS84),
                 "2014-02-10",
                 Consts.OTP_GRAPH_FILE);
         
         generatePopulation();
+        
+        new PopulationWriter(scenario.getPopulation(), scenario.getNetwork()).writeV5("output/population_vor_Simulation.xml");
 
 		Controler controler = new Controler(scenario);
 		org.matsim.core.utils.io.IOUtils.deleteDirectory(new File(Consts.BASEDIR + "testOneIteration"));
-		controler.setTransitRouterFactory(new TransitRouterFactory() {
+		controler.addOverridingModule(new AbstractModule() {
 
 			@Override
-			public TransitRouter createTransitRouter() {
-				throw new RuntimeException();
+			public void install() {
+				bind(TransitRouter.class).to(DummyTransitRouter.class);
 			}
 			
 		});
@@ -117,11 +120,25 @@ public class GeneratePopulationAndRunScenario {
 		controler.run();
 
 	}
+	
+	static class DummyTransitRouter implements TransitRouter {
+		@Override
+		public List<Leg> calcRoute(Coord fromCoord, Coord toCoord, double departureTime, Person person) {
+			throw new RuntimeException();
+		}
+		
+	}
 
 	private void generatePopulation() {
-		for (int i=0; i<10; ++i) {
-			Coord source = randomCoord();
-			Coord sink = randomCoord();
+		for (int i=0; i<1; ++i) {
+//			Coord source = randomCoord();
+//			Coord sink = randomCoord();
+			// Walk only legs
+//			Coord source = TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, Consts.TARGET_SCENARIO_COORDINATE_SYSTEM).transform(new CoordImpl(10.0285, 48.4359));
+//			Coord sink =TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, Consts.TARGET_SCENARIO_COORDINATE_SYSTEM).transform(new CoordImpl(10.0278, 48.4357));
+			// walk+pt legs
+			Coord source = TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, Consts.TARGET_SCENARIO_COORDINATE_SYSTEM).transform(new CoordImpl(10.0310, 48.4339));
+			Coord sink =TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, Consts.TARGET_SCENARIO_COORDINATE_SYSTEM).transform(new CoordImpl(10.0026, 48.4190));
 			Person person = scenario.getPopulation().getFactory().createPerson(Id.create(Integer.toString(i), Person.class));
 			Plan plan = scenario.getPopulation().getFactory().createPlan();
 			plan.addActivity(createHomeStart(source));

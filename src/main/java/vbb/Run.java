@@ -1,10 +1,16 @@
 package vbb;
 
 
+import java.util.List;
+
+import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Scenario;
+import org.matsim.api.core.v01.population.Leg;
+import org.matsim.api.core.v01.population.Person;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.config.groups.PlanCalcScoreConfigGroup.ActivityParams;
+import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controler;
 import org.matsim.core.network.MatsimNetworkReader;
 import org.matsim.core.population.PopulationReaderMatsimV5;
@@ -12,7 +18,6 @@ import org.matsim.core.scenario.ScenarioImpl;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.core.utils.geometry.transformations.IdentityTransformation;
 import org.matsim.pt.router.TransitRouter;
-import org.matsim.pt.router.TransitRouterFactory;
 import org.matsim.pt.transitSchedule.api.TransitScheduleReader;
 import org.matsim.vehicles.VehicleReaderV1;
 //import org.matsim.vis.otfvis.OTFVisConfigGroup;
@@ -58,15 +63,16 @@ public class Run {
 		
 		Controler controler = new Controler(scenario);
 		controler.setOverwriteFiles(true);
-		controler.setTransitRouterFactory(new TransitRouterFactory() {
+		controler.addOverridingModule(new AbstractModule() {
 
 			@Override
-			public TransitRouter createTransitRouter() {
-				throw new RuntimeException();
+			public void install() {
+				bind(TransitRouter.class).to(DummyTransitRouter.class);
 			}
 			
 		});
-		controler.setTripRouterFactory(new OTPTripRouterFactory(scenario.getTransitSchedule(), new IdentityTransformation(), "2013-08-24", "/Users/michaelzilske/gtfs-ulm/Graph.obj"));
+		controler.setTripRouterFactory(new OTPTripRouterFactory(scenario.getTransitSchedule(), 
+				scenario.getNetwork(), new IdentityTransformation(), "2013-08-24", "/Users/michaelzilske/gtfs-ulm/Graph.obj"));
 		
 		controler.run();
 
@@ -80,4 +86,12 @@ public class Run {
 
 	}
 
+	static class DummyTransitRouter implements TransitRouter {
+		@Override
+		public List<Leg> calcRoute(Coord fromCoord, Coord toCoord, double departureTime, Person person) {
+			throw new RuntimeException();
+		}
+		
+	}
+	
 }

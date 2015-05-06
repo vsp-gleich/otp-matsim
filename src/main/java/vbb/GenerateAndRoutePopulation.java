@@ -106,7 +106,8 @@ public class GenerateAndRoutePopulation {
 			population.addPerson(person);
 		}
 
-		final OTPTripRouterFactory trf = new OTPTripRouterFactory(scenario.getTransitSchedule(), new IdentityTransformation(), "2013-08-24", "/Users/michaelzilske/gtfs-ulm/Graph.obj");
+		final OTPTripRouterFactory trf = new OTPTripRouterFactory(scenario.getTransitSchedule(), 
+				scenario.getNetwork(), new IdentityTransformation(), "2013-08-24", "/Users/michaelzilske/gtfs-ulm/Graph.obj");
 
 		// make sure all routes are calculated.
 		ParallelPersonAlgorithmRunner.run(population, config.global().getNumberOfThreads(),
