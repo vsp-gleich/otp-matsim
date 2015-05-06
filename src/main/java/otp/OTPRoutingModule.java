@@ -200,8 +200,7 @@ public class OTPRoutingModule implements RoutingModule {
                     		linksTraversedInNonTransitMode.clear();
                     	}
                     	linksTraversedInNonTransitMode.add(Id.create(backEdge.getId(), Link.class));
-                    }
-                    else if (backEdge instanceof TransitBoardAlight) {
+                    } else if (backEdge instanceof TransitBoardAlight) {
                         Trip backTrip = state.getBackTrip();
                         if (((TransitBoardAlight) backEdge).boarding) {
                             String newStop = ((TransitVertex) state.getVertex()).getStopId().getId();
@@ -248,8 +247,7 @@ public class OTPRoutingModule implements RoutingModule {
                             stop = newStop;
                             currentLinkId = egressFacility.getLinkId();
                         }
-                    } 
-                        else if (backEdge instanceof FreeEdge || backEdge instanceof TransferEdge || backEdge instanceof StreetEdge) {
+                    } else if (backEdge instanceof FreeEdge || backEdge instanceof TransferEdge) {
                         Leg leg = new LegImpl(TRANSIT_WALK);
                         if (state.getVertex() instanceof TransitVertex) {
                             String newStop = ((TransitVertex) state.getVertex()).getStopId().getId();

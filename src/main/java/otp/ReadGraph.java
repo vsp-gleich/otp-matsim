@@ -11,7 +11,6 @@ import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.core.utils.geometry.CoordImpl;
 import org.matsim.core.utils.geometry.CoordinateTransformation;
-import org.matsim.core.utils.geometry.transformations.TransformationFactory;
 import org.matsim.pt.transitSchedule.api.TransitStopFacility;
 import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.edgetype.StreetTransitLink;
@@ -93,7 +92,7 @@ public class ReadGraph implements Runnable {
                         Node fromNode = network.getNodes().get(Id.create(e.getFromVertex().getIndex(), Node.class));
                         Node toNode = network.getNodes().get(Id.create(e.getToVertex().getIndex(), Node.class));
                         Link l = network.getFactory().createLink(Id.create(e.getId(), Link.class), fromNode, toNode);
-//                        Link l = network.getFactory().createLink(Id.create(e.getFromVertex().getIndex() + "_" + e.getToVertex().getIndex()+ "_" + i++, Link.class), fromNode, toNode);
+                        l.setFreespeed(((StreetEdge) e).getCarSpeed());
                         network.addLink(l);
                     } else if (e instanceof StreetTransitLink) {
                         // Found a street transit link
