@@ -106,7 +106,8 @@ public class GenerateAndRoutePopulation {
 			population.addPerson(person);
 		}
 
-		final OTPTripRouterFactory trf = new OTPTripRouterFactory(scenario.getTransitSchedule(), new IdentityTransformation(), "2015-02-10", 
+		final OTPTripRouterFactory trf = new OTPTripRouterFactory(scenario.getTransitSchedule(), 
+				scenario.getNetwork(), new IdentityTransformation(), "2015-02-10", 
 				"Z:/WinHome/otp-matsim/Portland/pdx/Graph.obj");
 
 		// make sure all routes are calculated.
