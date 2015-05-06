@@ -92,7 +92,8 @@ public class ReadGraph implements Runnable {
                     if (e instanceof StreetEdge) {
                         Node fromNode = network.getNodes().get(Id.create(e.getFromVertex().getIndex(), Node.class));
                         Node toNode = network.getNodes().get(Id.create(e.getToVertex().getIndex(), Node.class));
-                        Link l = network.getFactory().createLink(Id.create(e.getFromVertex().getIndex() + "_" + e.getToVertex().getIndex()+ "_" + i++, Link.class), fromNode, toNode);
+                        Link l = network.getFactory().createLink(Id.create(e.getId(), Link.class), fromNode, toNode);
+//                        Link l = network.getFactory().createLink(Id.create(e.getFromVertex().getIndex() + "_" + e.getToVertex().getIndex()+ "_" + i++, Link.class), fromNode, toNode);
                         network.addLink(l);
                     } else if (e instanceof StreetTransitLink) {
                         // Found a street transit link
