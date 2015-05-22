@@ -260,9 +260,10 @@ public class OTPRoutingModule implements RoutingModule {
                         	distance = 0;
                             stop = newStop;
                         }
-                        // OnboradEdge: interface for all otp edges onboard a pt vehicle
+                        // OnboardEdge: interface for all otp edges onboard a pt vehicle
                         // TransitBoardAlight implements OnboardEdge, but always returns 0
                     } else if (backEdge instanceof OnboardEdge) {
+                    	System.out.println("OnboardEdge " + backEdge.getId() + " with length " + backEdge.getDistance());
                     	distance = distance + backEdge.getDistance();
                     }
                 }
