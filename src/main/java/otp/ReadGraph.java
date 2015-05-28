@@ -18,6 +18,9 @@ import org.matsim.pt.transitSchedule.api.TransitLine;
 import org.matsim.pt.transitSchedule.api.TransitRoute;
 import org.matsim.pt.transitSchedule.api.TransitRouteStop;
 import org.matsim.pt.transitSchedule.api.TransitStopFacility;
+import org.matsim.vehicles.Vehicle;
+import org.matsim.vehicles.VehicleCapacity;
+import org.matsim.vehicles.VehicleType;
 import org.onebusaway.gtfs.model.Stop;
 import org.onebusaway.gtfs.model.Trip;
 import org.opentripplanner.routing.edgetype.PatternHop;
@@ -53,6 +56,7 @@ public class ReadGraph implements Runnable {
     private GraphService graphService;
     private CoordinateTransformation ct;
     private final Map<String, String> otp2matsimTransportModes = new HashMap<String, String>();
+    private final Map<String, Id<VehicleType>> matsimTransportMode2VehicleType = new HashMap<String, Id<VehicleType>>();
     private Set<String> patternCodesProcessed = new HashSet<String>();
 
     public Scenario getScenario() {
@@ -67,12 +71,13 @@ public class ReadGraph implements Runnable {
     }
 
     public void run() {
-    	initialize();
         Config ptConfig = ConfigUtils.createConfig();
         ptConfig.scenario().setUseTransit(true);
         ptConfig.scenario().setUseVehicles(true);
-        
+
         scenario = ScenarioUtils.createScenario(ptConfig);
+    	initialize();
+    	
         extractStreetNetwork(scenario);
         extractPtNetworkAndTransitStops(scenario);
         extractPtSchedule(scenario);
@@ -90,6 +95,19 @@ public class ReadGraph implements Runnable {
         otp2matsimTransportModes.put("FUNICULAR", "train");
         otp2matsimTransportModes.put("TRANSIT", "train");
         otp2matsimTransportModes.put("TRAINISH", "train");
+
+        matsimTransportMode2VehicleType.put("bus", Id.create("Small Bus", VehicleType.class));
+        matsimTransportMode2VehicleType.put("ship", Id.create("Small Ship", VehicleType.class));
+        matsimTransportMode2VehicleType.put("train", Id.create("Small Train", VehicleType.class));
+        
+        for(Id<VehicleType> idVehType: matsimTransportMode2VehicleType.values()){
+        	VehicleType vehType = scenario.getTransitVehicles().getFactory().createVehicleType(idVehType);
+            VehicleCapacity vehCapacity = scenario.getTransitVehicles().getFactory().createVehicleCapacity();
+            vehCapacity.setSeats(50);
+            vehCapacity.setStandingRoom(50);
+        	vehType.setCapacity(vehCapacity);
+        	scenario.getTransitVehicles().addVehicleType(vehType);
+        }
 	}
 
 	private void extractStreetNetwork(Scenario scenario) {
@@ -263,7 +281,13 @@ public class ReadGraph implements Runnable {
 						}
 						// Check if a TransitRoute with the same arrival and departure offsets already exists
 						Id<Departure> tripId = Id.create(tripTimes.trip.getId().getId(), Departure.class);
+						Id<Vehicle> vehicleId = Id.create(tripTimes.trip.getId().getId(), Vehicle.class);
 						Departure departure = scenario.getTransitSchedule().getFactory().createDeparture(tripId, tripTimes.getScheduledArrivalTime(0));
+						departure.setVehicleId(vehicleId);
+						VehicleType vehType= scenario.getTransitVehicles().getVehicleTypes().get(matsimTransportMode2VehicleType.get(otp2matsimTransportModes.get(pattern.mode.toString())));
+						Vehicle veh = scenario.getTransitVehicles().getFactory().createVehicle(vehicleId, vehType);
+						scenario.getTransitVehicles().addVehicle(veh);
+
 						boolean existingTransitRouteFound = false;
 						for(TransitRoute transitRoute: scenario.getTransitSchedule().getTransitLines().get(lineId).getRoutes().values()){
 							if(transitRoute.getStops().equals(transitRouteStops)){

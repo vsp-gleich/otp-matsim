@@ -4,6 +4,7 @@ import org.matsim.api.core.v01.network.Network;
 import org.matsim.core.network.NetworkWriter;
 import org.matsim.core.utils.geometry.transformations.TransformationFactory;
 import org.matsim.pt.transitSchedule.api.TransitScheduleWriter;
+import org.matsim.vehicles.VehicleWriterV1;
 
 import otp.OTPTripRouterFactory;
 import otp.ReadGraph;
@@ -21,6 +22,7 @@ public class ExtractNetwork {
 //        new NetworkWriter(readGraph.getDummyPtScenario().getNetwork()).write(Consts.DUMMY_NETWORK_FILE);
         // Writes only transitStops
         new TransitScheduleWriter(readGraph.getScenario().getTransitSchedule()).writeFile(Consts.TRANSIT_SCHEDULE_FILE);
+        new VehicleWriterV1(readGraph.getScenario().getTransitVehicles()).writeFile(Consts.TRANSIT_VEHICLE_FILE);
     }
 
 }

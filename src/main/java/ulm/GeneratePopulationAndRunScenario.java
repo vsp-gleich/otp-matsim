@@ -53,6 +53,7 @@ public class GeneratePopulationAndRunScenario {
 		config.scenario().setUseTransit(true);
 		config.transit().setTransitScheduleFile(Consts.TRANSIT_SCHEDULE_FILE);
 		config.network().setInputFile(Consts.NETWORK_FILE);
+		config.vehicles().setVehiclesFile(Consts.TRANSIT_VEHICLE_FILE);
 		
 		config.controler().setMobsim("qsim");
 		config.controler().setLastIteration(0);
