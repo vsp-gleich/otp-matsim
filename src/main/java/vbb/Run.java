@@ -1,6 +1,7 @@
 package vbb;
 
 
+import java.io.File;
 import java.util.List;
 
 import org.matsim.api.core.v01.Coord;
@@ -23,6 +24,7 @@ import org.matsim.vehicles.VehicleReaderV1;
 //import org.matsim.vis.otfvis.OTFVisConfigGroup;
 //import org.matsim.vis.otfvis.OTFVisConfigGroup.ColoringScheme;
 import otp.OTPTripRouterFactory;
+import ulm.Consts;
 
 
 public class Run {
@@ -62,7 +64,8 @@ public class Run {
 		
 		
 		Controler controler = new Controler(scenario);
-		controler.setOverwriteFiles(true);
+		org.matsim.core.utils.io.IOUtils.deleteDirectory(new File("./output"));
+//		controler.setOverwriteFiles(true);
 		controler.addOverridingModule(new AbstractModule() {
 
 			@Override

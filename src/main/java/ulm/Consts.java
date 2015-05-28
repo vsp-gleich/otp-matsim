@@ -11,7 +11,7 @@ public class Consts {
     /** Created by ExtractNetwork */
     public static final String DUMMY_NETWORK_FILE = "output/extracted-dummy-pt-network.xml";
     /** Created by ExtractNetwork */
-    public static final String NETWORK_FILE = "output/extracted-street-network.xml";
+    public static final String NETWORK_FILE = "output/extracted-network.xml";
     public static final String OTP_GRAPH_FILE = "output/Graph.obj";
     public static final String POPULATION_FILE = "output/population.xml";
 
