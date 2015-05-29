@@ -30,6 +30,7 @@ import org.matsim.core.utils.geometry.transformations.TransformationFactory;
 import org.matsim.pt.router.TransitRouter;
 import org.matsim.pt.transitSchedule.api.TransitScheduleReader;
 import org.matsim.pt.transitSchedule.api.TransitStopFacility;
+import org.matsim.vehicles.VehicleReaderV1;
 
 import otp.OTPTripRouterFactory;
 
@@ -52,8 +53,8 @@ public class GeneratePopulationAndRunScenario {
 		config.scenario().setUseVehicles(true);
 		config.scenario().setUseTransit(true);
 		config.transit().setTransitScheduleFile(Consts.TRANSIT_SCHEDULE_FILE);
+		config.transit().setVehiclesFile(Consts.TRANSIT_VEHICLE_FILE);
 		config.network().setInputFile(Consts.NETWORK_FILE);
-		config.vehicles().setVehiclesFile(Consts.TRANSIT_VEHICLE_FILE);
 		
 		config.controler().setMobsim("qsim");
 		config.controler().setLastIteration(0);
@@ -91,7 +92,7 @@ public class GeneratePopulationAndRunScenario {
 
 		new MatsimNetworkReader(scenario).readFile(config.network().getInputFile());
 		new TransitScheduleReader(scenario).readFile(config.transit().getTransitScheduleFile());
-		// new VehicleReaderV1(((ScenarioImpl) scenario).getTransitVehicles()).readFile(config.transit().getVehiclesFile());
+		new VehicleReaderV1(scenario.getTransitVehicles()).readFile(config.transit().getVehiclesFile());
 		
         facs = new ArrayList<>(scenario.getTransitSchedule().getFacilities().values());
         System.out.println("Scenario has " + scenario.getNetwork().getLinks().size() + " links.");
