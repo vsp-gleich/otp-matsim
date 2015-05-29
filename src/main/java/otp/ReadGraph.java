@@ -46,8 +46,8 @@ import java.util.Set;
 
 /*
  * TODO: 
- * -TransitRoute arrival, departure delays
- * -otp trips -> matsim departures
+ * -extract timetable for a specific day -> no longer weekday, saturday, sunday overlay
+ * -Include Agency Id to avoid duplicate Ids
  * -otp trips saved as frequency -> matsim departures
  * -check otp2matsim transport modes
  */
@@ -308,6 +308,7 @@ public class ReadGraph implements Runnable {
 							TransitRoute transitRoute = scenario.getTransitSchedule().getFactory().createTransitRoute(
 									routeId, netRoute, transitRouteStops, otp2matsimTransportModes.get(pattern.mode.toString()));
 							transitRoute.setDescription("Code: " + pattern.code + ", Name: " + pattern.name);
+							transitRoute.addDeparture(departure);
 							scenario.getTransitSchedule().getTransitLines().get(lineId).addRoute(transitRoute);
 						}
 					}
