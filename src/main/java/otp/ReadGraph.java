@@ -42,10 +42,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/*
+/**
  * TODO: 
  * -extract timetable for a specific day -> no longer weekday, saturday, sunday overlay
- * -Include Agency Id to avoid duplicate Ids
  * -otp trips saved as frequency -> matsim departures
  * -check otp2matsim transport modes
  */
@@ -139,7 +138,7 @@ public class ReadGraph implements Runnable {
         for (Vertex v : graphService.getGraph().getVertices()) {
         	if (v instanceof TransitStop) {
         		TransitStop transitStop = (TransitStop) v;
-        		String stopId = transitStop.getStopId().getId();
+        		String stopId = transitStop.getStopId().toString();
         		Coord coord = ct.transform(new CoordImpl(transitStop.getX(), transitStop.getY()));
         		Node node = network.getFactory().createNode(
         				Id.createNodeId(stopId),
@@ -194,8 +193,8 @@ public class ReadGraph implements Runnable {
             	        							Vertex arrivalStopVertex = prealight.getToVertex();
             	        							if(arrivalStopVertex instanceof TransitStop){
             	        								TransitStop arrivalStop = (TransitStop) arrivalStopVertex;
-            	        		                        Node fromNode = network.getNodes().get(Id.create(departureStop.getStopId().getId(), Node.class));
-            	        		                        Node toNode = network.getNodes().get(Id.create(arrivalStop.getStopId().getId(), Node.class));
+            	        		                        Node fromNode = network.getNodes().get(Id.create(departureStop.getStopId().toString(), Node.class));
+            	        		                        Node toNode = network.getNodes().get(Id.create(arrivalStop.getStopId().toString(), Node.class));
             	        		                        Link l = network.getFactory().createLink(Id.create(patternHop.getId(), Link.class), fromNode, toNode);
             	        		                        Set<String> allowedModes = new HashSet<String>();
             	        		                        allowedModes.add(otp2matsimTransportModes.get(patternHop.getMode().toString()));
@@ -242,8 +241,7 @@ public class ReadGraph implements Runnable {
     }
     
 	private void writeTripPattern(TripPattern pattern) {
-//		!!! id in OTPRoutingModule: backTrip.getRoute().getId().getId()+ "_"+backTrip.getRoute().getShortName()
-		Id<TransitLine> lineId = Id.create(pattern.route.getId().getId(), TransitLine.class);
+		Id<TransitLine> lineId = Id.create(pattern.route.getId().toString(), TransitLine.class);
 		if(!patternCodesProcessed.contains(pattern.code)){
 			if(!scenario.getTransitSchedule().getTransitLines().containsKey(lineId)){
 				System.out.println("Line " + lineId.toString() + ", pattern.name: " + pattern.name);
@@ -252,14 +250,14 @@ public class ReadGraph implements Runnable {
 				scenario.getTransitSchedule().addTransitLine(transitLine);
 			}
 			System.out.println("Line " + lineId.toString() + ", pattern.name: " + pattern.name + ", code: " + pattern.code + ", route: " + pattern.route);
-			Id<Link> startLinkId = Id.create(pattern.getPatternHops().get(0).getBeginStop().getId().getId(), Link.class);
-			Id<Link> endLinkId = Id.create(pattern.getPatternHops().get(pattern.getPatternHops().size()-1).getEndStop().getId().getId(), Link.class);
+			Id<Link> startLinkId = Id.create(pattern.getPatternHops().get(0).getBeginStop().getId().toString(), Link.class);
+			Id<Link> endLinkId = Id.create(pattern.getPatternHops().get(pattern.getPatternHops().size()-1).getEndStop().getId().toString(), Link.class);
 			if(pattern.getPatternHops().size() > 0){
 				NetworkRoute netRoute = (NetworkRoute) (new LinkNetworkRouteFactory()).createRoute(startLinkId, endLinkId);
 				List<Id<Link>> linksBetweenStartAndEnd = new LinkedList<Id<Link>>();
 				for(int i = 0; i <= pattern.getPatternHops().size() - 2; i++){
 					linksBetweenStartAndEnd.add(Id.create(pattern.getPatternHops().get(i).getId(), Link.class));
-					linksBetweenStartAndEnd.add(Id.create(pattern.getPatternHops().get(i).getEndStop().getId().getId(), Link.class));
+					linksBetweenStartAndEnd.add(Id.create(pattern.getPatternHops().get(i).getEndStop().getId().toString(), Link.class));
 				}
 				// Add last patternhop without adding the terminus stop
 				linksBetweenStartAndEnd.add(Id.create(pattern.getPatternHops().get(pattern.getPatternHops().size() - 1).getId(), Link.class));
@@ -275,7 +273,7 @@ public class ReadGraph implements Runnable {
 							/* Assuming that org.onebusaway.gtfs.model.Stop and 
 							 * org.opentripplanner.routing.vertextype.TransitStop use the same ids
 							 */
-							Id<TransitStopFacility> stopId = Id.create(pattern.getStops().get(i).getId().getId(), TransitStopFacility.class);
+							Id<TransitStopFacility> stopId = Id.create(pattern.getStops().get(i).getId().toString(), TransitStopFacility.class);
 							TransitStopFacility stopFacility = scenario.getTransitSchedule().getFacilities().get(stopId);
 							double arrivalDelay = tripTimes.getScheduledArrivalTime(i) - tripTimes.getScheduledArrivalTime(0);
 							double departureDelay = tripTimes.getScheduledDepartureTime(i) - tripTimes.getScheduledArrivalTime(0);
@@ -284,8 +282,8 @@ public class ReadGraph implements Runnable {
 							transitRouteStops.add(routeStop);
 						}
 						// Check if a TransitRoute with the same arrival and departure offsets already exists
-						Id<Departure> tripId = Id.create(tripTimes.trip.getId().getId(), Departure.class);
-						Id<Vehicle> vehicleId = Id.create(tripTimes.trip.getId().getId(), Vehicle.class);
+						Id<Departure> tripId = Id.create(tripTimes.trip.getId().toString(), Departure.class);
+						Id<Vehicle> vehicleId = Id.create(tripTimes.trip.getId().toString(), Vehicle.class);
 						Departure departure = scenario.getTransitSchedule().getFactory().createDeparture(tripId, tripTimes.getScheduledArrivalTime(0));
 						departure.setVehicleId(vehicleId);
 						VehicleType vehType= scenario.getTransitVehicles().getVehicleTypes().get(
@@ -301,7 +299,7 @@ public class ReadGraph implements Runnable {
 							}
 						}
 						if(!existingTransitRouteFound){
-							Id<TransitRoute> routeId = Id.create(tripTimes.trip.getId().getId(), TransitRoute.class);
+							Id<TransitRoute> routeId = Id.create(tripTimes.trip.getId().toString(), TransitRoute.class);
 							TransitRoute transitRoute = scenario.getTransitSchedule().getFactory().createTransitRoute(
 									routeId, netRoute, transitRouteStops, otp2matsimTransportModes.get(pattern.mode.toString()));
 							transitRoute.setDescription("Code: " + pattern.code + ", Name: " + pattern.name);

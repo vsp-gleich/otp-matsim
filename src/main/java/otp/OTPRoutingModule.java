@@ -45,7 +45,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 
 /**
- * TODO: - TransitLine and TransitRoute Ids as in ReadGraph
+ * TODO:
  * 
  * @author gleich
  *
@@ -218,10 +218,12 @@ public class OTPRoutingModule implements RoutingModule {
                     	linksTraversedInNonTransitMode.add(Id.create(backEdge.getId(), Link.class));
                     	distance = distance + backEdge.getDistance();
                     }
+                    // boarding or alighting at a transit stop
                     else if (backEdge instanceof TransitBoardAlight) {
                         Trip backTrip = state.getBackTrip();
                         if (((TransitBoardAlight) backEdge).boarding) {
-                            String newStop = ((TransitVertex) state.getVertex()).getStopId().getId();
+                        	// boarding
+                            String newStop = ((TransitVertex) state.getVertex()).getStopId().toString();
                             TransitStopFacility accessFacility = transitSchedule.getFacilities().get(Id.create(newStop, TransitStopFacility.class));
 //                        	System.out.println("Arrived at TransitStop: " + newStop + " .Links traversed: " + linksTraversedInNonTransitMode.toString() + "\n");
 
@@ -248,8 +250,9 @@ public class OTPRoutingModule implements RoutingModule {
                         	distance = 0;
                         	stop = newStop;
                         } else {
+                        	// alighting
                             Leg leg = new LegImpl(PT);
-                            String newStop = ((TransitVertex) state.getVertex()).getStopId().getId();
+                            String newStop = ((TransitVertex) state.getVertex()).getStopId().toString();
                             TransitStopFacility accessFacility = transitSchedule.getFacilities().get(Id.create(stop, TransitStopFacility.class));
                             TransitStopFacility egressFacility = transitSchedule.getFacilities().get(Id.create(newStop, TransitStopFacility.class));
                             final ExperimentalTransitRoute route = new ExperimentalTransitRoute( 
@@ -290,14 +293,14 @@ public class OTPRoutingModule implements RoutingModule {
 
 	private TransitRoute createRoute(Trip backTrip) {
 		List<TransitRouteStop> emptyList = Collections.emptyList();
-		Id<TransitLine> tlId = Id.create(backTrip.getRoute().getId().getId()+ "_"+backTrip.getRoute().getShortName(), TransitLine.class);
+		Id<TransitLine> tlId = Id.create(backTrip.getRoute().getId().toString(), TransitLine.class);
 		Id<TransitRoute> trId = Id.create("", TransitRoute.class);
-//		for(TransitRoute tr: transitSchedule.getTransitLines().get(tlId).getRoutes().values()){
-//			if(tr.getDepartures().containsKey(Id.create(backTrip.getId().getId(), Departure.class))){
-//				trId = tr.getId();
-//				break;
-//			}
-//		}
+		for(TransitRoute tr: transitSchedule.getTransitLines().get(tlId).getRoutes().values()){
+			if(tr.getDepartures().containsKey(Id.create(backTrip.getId().toString(), Departure.class))){
+				trId = tr.getId();
+				break;
+			}
+		}
 		return tsf.createTransitRoute(trId, null , emptyList, null);
 	}
 	
@@ -314,7 +317,7 @@ public class OTPRoutingModule implements RoutingModule {
 	}
 
 	private TransitLine createLine(Trip backTrip) {
-		return tsf.createTransitLine(Id.create(backTrip.getRoute().getId().getId()+ "_"+backTrip.getRoute().getShortName(), TransitLine.class));
+		return tsf.createTransitLine(Id.create(backTrip.getRoute().getId().toString(), TransitLine.class));
 	}
 
 }
