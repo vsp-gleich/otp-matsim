@@ -44,6 +44,12 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
+/**
+ * TODO: - TransitLine and TransitRoute Ids as in ReadGraph
+ * 
+ * @author gleich
+ *
+ */
 public class OTPRoutingModule implements RoutingModule {
 
     // Mode used for trips inserted "by hand" (not coming from OTP)

@@ -21,8 +21,6 @@ import org.matsim.pt.transitSchedule.api.TransitStopFacility;
 import org.matsim.vehicles.Vehicle;
 import org.matsim.vehicles.VehicleCapacity;
 import org.matsim.vehicles.VehicleType;
-import org.onebusaway.gtfs.model.Stop;
-import org.onebusaway.gtfs.model.Trip;
 import org.opentripplanner.routing.edgetype.PatternHop;
 import org.opentripplanner.routing.edgetype.PreAlightEdge;
 import org.opentripplanner.routing.edgetype.PreBoardEdge;
@@ -118,9 +116,7 @@ public class ReadGraph implements Runnable {
                 Node n = network.getFactory().createNode(Id.create(v.getIndex(), Node.class), ct.transform(new CoordImpl(v.getX(), v.getY())));
                 network.addNode(n);
             }
-//            System.out.println(v + v.getClass().toString());
         }
-        int i = 0;
         for (Vertex v : graphService.getGraph().getVertices()) {
             if (v instanceof IntersectionVertex) {
                 for (Edge e : v.getOutgoing()) {
@@ -157,6 +153,10 @@ public class ReadGraph implements Runnable {
                     allowedModes.add(mode);
                 }
         		link.setAllowedModes(allowedModes);
+        		// Increase flow and storage capacity in order to avoid pt vehicles blocking each other
+        		link.setCapacity(1000000);
+        		link.setFreespeed(1000);
+        		link.setLength(1000);
         		network.addLink(link);
         		/* isBlocking set to false because several lines each stopping at a different stop in otp are mapped to one matsim stop */
         		TransitStopFacility transitStopFacility = scenario.getTransitSchedule().getFactory().createTransitStopFacility(
@@ -194,13 +194,13 @@ public class ReadGraph implements Runnable {
             	        							Vertex arrivalStopVertex = prealight.getToVertex();
             	        							if(arrivalStopVertex instanceof TransitStop){
             	        								TransitStop arrivalStop = (TransitStop) arrivalStopVertex;
-//            	        		        				 System.out.println("Transit link " + patternHop.getId() + " from " + departureStop.getStopId().getId() + " to " + arrivalStop.getStopId().getId());
             	        		                        Node fromNode = network.getNodes().get(Id.create(departureStop.getStopId().getId(), Node.class));
             	        		                        Node toNode = network.getNodes().get(Id.create(arrivalStop.getStopId().getId(), Node.class));
             	        		                        Link l = network.getFactory().createLink(Id.create(patternHop.getId(), Link.class), fromNode, toNode);
             	        		                        Set<String> allowedModes = new HashSet<String>();
             	        		                        allowedModes.add(otp2matsimTransportModes.get(patternHop.getMode().toString()));
             	        		                        l.setAllowedModes(allowedModes);
+            	        		                		l.setCapacity(1000000);
             	        		                        network.addLink(l);
             	        							}
             	        						}        	        						
@@ -219,7 +219,6 @@ public class ReadGraph implements Runnable {
     private void extractPtSchedule(Scenario scenario){
         for(Vertex v: graphService.getGraph().getVertices()){
         	if(v instanceof TransitStop){
-        		TransitStop departureStop = (TransitStop) v;
         		for(Edge e: v.getOutgoing()){
         			/* skip edges between the Transit stop vertex and the PatternStopVertex (departure vertex of a pt line) */
         			if(e instanceof PreBoardEdge){
@@ -272,12 +271,10 @@ public class ReadGraph implements Runnable {
 					 */
 					for(TripTimes tripTimes: pattern.scheduledTimetable.tripTimes){
 						List<TransitRouteStop> transitRouteStops = new LinkedList<TransitRouteStop>();
-//						Do arrival at first stop + departure at last stop always exist?
 						for(int i = 0; i < tripTimes.getNumStops(); i++){
 							/* Assuming that org.onebusaway.gtfs.model.Stop and 
 							 * org.opentripplanner.routing.vertextype.TransitStop use the same ids
 							 */
-//							System.out.println("TransitRoute (code) "+ pattern.code + ", trip " + tripTimes.trip.getId().getId() + " Stop nr " + i + " " + pattern.getStops().get(i));
 							Id<TransitStopFacility> stopId = Id.create(pattern.getStops().get(i).getId().getId(), TransitStopFacility.class);
 							TransitStopFacility stopFacility = scenario.getTransitSchedule().getFacilities().get(stopId);
 							double arrivalDelay = tripTimes.getScheduledArrivalTime(i) - tripTimes.getScheduledArrivalTime(0);
