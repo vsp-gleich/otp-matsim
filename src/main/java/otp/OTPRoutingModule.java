@@ -29,6 +29,7 @@ import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.core.TraverseModeSet;
 import org.opentripplanner.routing.edgetype.FreeEdge;
+import org.opentripplanner.routing.edgetype.OnboardEdge;
 import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.edgetype.TransferEdge;
 import org.opentripplanner.routing.edgetype.TransitBoardAlight;
@@ -43,6 +44,12 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
+/**
+ * TODO:
+ * 
+ * @author gleich
+ *
+ */
 public class OTPRoutingModule implements RoutingModule {
 
     // Mode used for trips inserted "by hand" (not coming from OTP)
@@ -60,6 +67,8 @@ public class OTPRoutingModule implements RoutingModule {
     public static final String TRANSIT_WALK = "walk";
     
     private static Map<TraverseMode, String> otp2MatsimModes = new HashMap<TraverseMode, String>();
+    
+    private TimeZone timeZone = TimeZone.getTimeZone("Europe/Berlin");
 
     
 
@@ -87,7 +96,7 @@ public class OTPRoutingModule implements RoutingModule {
 		this.transitScheduleToPathServiceCt = ct;
 		try {
 			SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd");
-			df.setTimeZone(TimeZone.getTimeZone("Europe/Berlin"));
+			df.setTimeZone(timeZone);
 			this.day = df.parse(date);
 		} catch (ParseException e) {
 			throw new RuntimeException(e);
@@ -146,7 +155,7 @@ public class OTPRoutingModule implements RoutingModule {
 		options.setMaxWalkDistance(Double.MAX_VALUE);
 		 
 		Calendar when = Calendar.getInstance();
-		when.setTimeZone(TimeZone.getTimeZone("Europe/Berlin"));
+		when.setTimeZone(timeZone);
 		when.setTime(day);
 		when.add(Calendar.SECOND, (int) departureTime);
 		options.setDateTime(when.getTime());
@@ -163,12 +172,16 @@ public class OTPRoutingModule implements RoutingModule {
 
 		List<GraphPath> paths = pathservice.getPaths(options);
 
-		Id<Link> currentLinkId = null;
 		if (paths != null) {
 			GraphPath path = paths.get(0);
 			path.dump();
 			String stop = null;
 			long time = 0;
+            long lastDepartureSec = Long.MIN_VALUE;
+			double distance = 0;
+			if(!path.states.isEmpty()){
+				lastDepartureSec = (path.states.getFirst().getTimeInMillis() - day.getTime())/1000;
+			}
 			TraverseMode nonTransitMode = null;
 			List<Id<Link>> linksTraversedInNonTransitMode = new LinkedList<Id<Link>>();
 			for (State state : path.states) {
@@ -195,85 +208,79 @@ public class OTPRoutingModule implements RoutingModule {
                     		nonTransitMode = state.getNonTransitMode();
                     	} else if(nonTransitMode != state.getNonTransitMode()){
                     		legs.add(createStreetNetworkNonTransitLeg(otp2MatsimModes.get(nonTransitMode), 
-                    				linksTraversedInNonTransitMode, travelTime));
+                    				linksTraversedInNonTransitMode, travelTime, lastDepartureSec, distance));
+                    		time = state.getElapsedTimeSeconds();
+                        	lastDepartureSec = (state.getTimeInMillis() - day.getTime())/1000;
+                    		distance = 0;
                     		nonTransitMode = state.getNonTransitMode();
                     		linksTraversedInNonTransitMode.clear();
                     	}
                     	linksTraversedInNonTransitMode.add(Id.create(backEdge.getId(), Link.class));
-                    } else if (backEdge instanceof TransitBoardAlight) {
+                    	distance = distance + backEdge.getDistance();
+                    }
+                    // boarding or alighting at a transit stop
+                    else if (backEdge instanceof TransitBoardAlight) {
                         Trip backTrip = state.getBackTrip();
                         if (((TransitBoardAlight) backEdge).boarding) {
-                            String newStop = ((TransitVertex) state.getVertex()).getStopId().getId();
-                            time = state.getElapsedTimeSeconds();
+                        	// boarding
+                            String newStop = ((TransitVertex) state.getVertex()).getStopId().toString();
                             TransitStopFacility accessFacility = transitSchedule.getFacilities().get(Id.create(newStop, TransitStopFacility.class));
-                            if (!currentLinkId.equals(accessFacility.getLinkId())) {
-                                throw new RuntimeException();
-                            }
-                        	System.out.println("Arrived at TransitStop: " + newStop + " .Links traversed: " + linksTraversedInNonTransitMode.toString() + "\n");
+//                        	System.out.println("Arrived at TransitStop: " + newStop + " .Links traversed: " + linksTraversedInNonTransitMode.toString() + "\n");
 
                         	if(linksTraversedInNonTransitMode.isEmpty()){
                         		/* isEmpty: either transfer between lines or trip started directly at this station */
                         		if(stop != null){
                         			/* trip has involved boarding or alighting at another transit stop before -> this is a transfer */
                                     TransitStopFacility egressFacility = transitSchedule.getFacilities().get(Id.create(stop, TransitStopFacility.class));
-                                    
-                                    ////////// Why egressFacility.getLinkId() == accessFacility.getLinkId()  ?
                                     legs.addAll(createTeleportationTrip(egressFacility.getLinkId(), accessFacility.getLinkId(), 
                                     		TELEPORT_TRANSIT_STOP_AREA));
                         		}
                         	} else {
                             	/* Save the walk leg to the transit stop*/
                             	legs.add(createStreetNetworkNonTransitLeg(otp2MatsimModes.get(nonTransitMode), 
-                            			linksTraversedInNonTransitMode, travelTime));
+                        				linksTraversedInNonTransitMode, travelTime, lastDepartureSec, distance));
                             	/* Save a teleport leg from the last link on the street layer to the transit stop */
                             	legs.addAll(createTeleportationTrip(linksTraversedInNonTransitMode.get( 
                                 		linksTraversedInNonTransitMode.size()-1), accessFacility.getLinkId(), 
                                 		TELEPORT_TRANSIT_STOP_AREA));
                             	linksTraversedInNonTransitMode.clear();
                         	}
+                            time = state.getElapsedTimeSeconds();
+                        	lastDepartureSec = (state.getTimeInMillis() - day.getTime())/1000;
+                        	distance = 0;
                         	stop = newStop;
                         } else {
+                        	// alighting
                             Leg leg = new LegImpl(PT);
-                            String newStop = ((TransitVertex) state.getVertex()).getStopId().getId();
+                            String newStop = ((TransitVertex) state.getVertex()).getStopId().toString();
                             TransitStopFacility accessFacility = transitSchedule.getFacilities().get(Id.create(stop, TransitStopFacility.class));
                             TransitStopFacility egressFacility = transitSchedule.getFacilities().get(Id.create(newStop, TransitStopFacility.class));
                             final ExperimentalTransitRoute route = new ExperimentalTransitRoute( 
                             		accessFacility, createLine(backTrip), createRoute(backTrip), egressFacility);
                             route.setTravelTime(travelTime);
+                            route.setDistance(distance);
                             leg.setRoute(route);
                             leg.setTravelTime(travelTime);
+                            leg.setDepartureTime(lastDepartureSec);
+                            System.out.println(lastDepartureSec/(60*60) + ":"+ (lastDepartureSec%(60*60))/60 + ":" + lastDepartureSec%60);
                             legs.add(leg);
                             time = state.getElapsedTimeSeconds();
+                        	lastDepartureSec = (state.getTimeInMillis() - day.getTime())/1000;
+                        	distance = 0;
                             stop = newStop;
-                            currentLinkId = egressFacility.getLinkId();
                         }
-                    } else if (backEdge instanceof FreeEdge || backEdge instanceof TransferEdge) {
-                        Leg leg = new LegImpl(TRANSIT_WALK);
-                        if (state.getVertex() instanceof TransitVertex) {
-                            String newStop = ((TransitVertex) state.getVertex()).getStopId().getId();
-                            if (!newStop.equals(stop)) {
-                                Id<Link> startLinkId = currentLinkId;
-                                Id<Link> endLinkId = transitSchedule.getFacilities().get(Id.create(newStop, TransitStopFacility.class)).getLinkId();
-                                if (currentLinkId != null) {
-                                    GenericRouteImpl route = new GenericRouteImpl(startLinkId, endLinkId);
-                                    route.setTravelTime(travelTime);
-                                    route.setDistance(state.getWalkSinceLastTransit());
-                                    leg.setRoute(route);
-                                    leg.setTravelTime(travelTime);
-//                                    legs.add(leg);
-                                }
-                                time = state.getElapsedTimeSeconds();
-//                                stop = newStop;
-                                currentLinkId = endLinkId;
-                            }
-                        }
+                        // OnboardEdge: interface for all otp edges onboard a pt vehicle
+                        // TransitBoardAlight implements OnboardEdge, but always returns 0
+                    } else if (backEdge instanceof OnboardEdge) {
+                    	System.out.println("OnboardEdge " + backEdge.getId() + " with length " + backEdge.getDistance());
+                    	distance = distance + backEdge.getDistance();
                     }
                 }
 
             } if (!linksTraversedInNonTransitMode.isEmpty()){
             	legs.add(createStreetNetworkNonTransitLeg(otp2MatsimModes.get(nonTransitMode), 
     					linksTraversedInNonTransitMode, 
-    					path.states.getLast().getElapsedTimeSeconds() - time));
+    					path.states.getLast().getElapsedTimeSeconds() - time, lastDepartureSec, distance));
             	linksTraversedInNonTransitMode.clear();
             }
 		} else {
@@ -286,29 +293,31 @@ public class OTPRoutingModule implements RoutingModule {
 
 	private TransitRoute createRoute(Trip backTrip) {
 		List<TransitRouteStop> emptyList = Collections.emptyList();
-		Id<TransitLine> tlId = Id.create(backTrip.getRoute().getId().getId()+ "_"+backTrip.getRoute().getShortName(), TransitLine.class);
+		Id<TransitLine> tlId = Id.create(backTrip.getRoute().getId().toString(), TransitLine.class);
 		Id<TransitRoute> trId = Id.create("", TransitRoute.class);
-//		for(TransitRoute tr: transitSchedule.getTransitLines().get(tlId).getRoutes().values()){
-//			if(tr.getDepartures().containsKey(Id.create(backTrip.getId().getId(), Departure.class))){
-//				trId = tr.getId();
-//				break;
-//			}
-//		}
+		for(TransitRoute tr: transitSchedule.getTransitLines().get(tlId).getRoutes().values()){
+			if(tr.getDepartures().containsKey(Id.create(backTrip.getId().toString(), Departure.class))){
+				trId = tr.getId();
+				break;
+			}
+		}
 		return tsf.createTransitRoute(trId, null , emptyList, null);
 	}
 	
 	private Leg createStreetNetworkNonTransitLeg(String mode, List<Id<Link>> linksTraversed, 
-			long travelTime){
+			long travelTime, long departureTime, double distance){
 		Leg leg = new LegImpl(mode);
 		Route route = RouteUtils.createNetworkRoute(linksTraversed, matsimNetwork);
 		route.setTravelTime(travelTime);
+		route.setDistance(distance);
 		leg.setRoute(route);
 		leg.setTravelTime(travelTime);
+		leg.setDepartureTime(departureTime);
 		return leg;
 	}
 
 	private TransitLine createLine(Trip backTrip) {
-		return tsf.createTransitLine(Id.create(backTrip.getRoute().getId().getId()+ "_"+backTrip.getRoute().getShortName(), TransitLine.class));
+		return tsf.createTransitLine(Id.create(backTrip.getRoute().getId().toString(), TransitLine.class));
 	}
 
 }

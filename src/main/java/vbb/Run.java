@@ -1,6 +1,9 @@
 package vbb;
 
 
+import java.io.File;
+import java.util.List;
+
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.population.Leg;
@@ -12,17 +15,16 @@ import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controler;
 import org.matsim.core.network.MatsimNetworkReader;
 import org.matsim.core.population.PopulationReaderMatsimV5;
+import org.matsim.core.scenario.ScenarioImpl;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.core.utils.geometry.transformations.IdentityTransformation;
 import org.matsim.pt.router.TransitRouter;
 import org.matsim.pt.transitSchedule.api.TransitScheduleReader;
 import org.matsim.vehicles.VehicleReaderV1;
-import otp.OTPTripRouterFactory;
-
-import java.util.List;
-
 //import org.matsim.vis.otfvis.OTFVisConfigGroup;
 //import org.matsim.vis.otfvis.OTFVisConfigGroup.ColoringScheme;
+import otp.OTPTripRouterFactory;
+import ulm.Consts;
 
 
 public class Run {
@@ -36,6 +38,8 @@ public class Run {
 		config.qsim().setSnapshotStyle("queue");
 		config.qsim().setSnapshotPeriod(1);
 		config.qsim().setRemoveStuckVehicles(false);
+//		ConfigUtils.addOrGetModule(config, OTFVisConfigGroup.GROUP_NAME, OTFVisConfigGroup.class).setColoringScheme(ColoringScheme.gtfs);
+//		ConfigUtils.addOrGetModule(config, OTFVisConfigGroup.GROUP_NAME, OTFVisConfigGroup.class).setDrawTransitFacilities(false);
 		config.transitRouter().setMaxBeelineWalkConnectionDistance(1.0);
 		
 		config.network().setInputFile("/Users/zilske/gtfs-bvg/network.xml");
@@ -54,12 +58,14 @@ public class Run {
 		Scenario scenario = ScenarioUtils.createScenario(config);
 		
 		new MatsimNetworkReader(scenario).readFile(config.network().getInputFile());
-		new VehicleReaderV1(scenario.getVehicles()).readFile(config.transit().getVehiclesFile());
+		new VehicleReaderV1(((ScenarioImpl) scenario).getVehicles()).readFile(config.transit().getVehiclesFile());
 		new TransitScheduleReader(scenario).readFile(config.transit().getTransitScheduleFile());
 		new PopulationReaderMatsimV5(scenario).readFile(config.plans().getInputFile());
 		
 		
 		Controler controler = new Controler(scenario);
+		org.matsim.core.utils.io.IOUtils.deleteDirectory(new File("./output"));
+//		controler.setOverwriteFiles(true);
 		controler.addOverridingModule(new AbstractModule() {
 
 			@Override
