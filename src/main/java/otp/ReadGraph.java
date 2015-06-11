@@ -175,6 +175,7 @@ public class ReadGraph implements Runnable {
                         Node fromNode = network.getNodes().get(Id.create(e.getFromVertex().getIndex(), Node.class));
                         Node toNode = network.getNodes().get(Id.create(e.getToVertex().getIndex(), Node.class));
                         Link l = network.getFactory().createLink(Id.create(e.getId(), Link.class), fromNode, toNode);
+                        l.setFreespeed(((StreetEdge) e).getCarSpeed());
                         network.addLink(l);
                     } else if (e instanceof StreetTransitLink) {
                         // Found a street transit link
@@ -328,7 +329,7 @@ public class ReadGraph implements Runnable {
 								tripTimes.getDepartureTime(0) < scheduleEndTimeOnFollowingDate){
 							writeTripTime(pattern, lineId, netRoute, tripTimes, 1);
 						}
-						if(serviceIdsOnFollowingDate.contains(tripTimes.trip.getServiceId()) && 
+						if(serviceIdsOnPreviousDate.contains(tripTimes.trip.getServiceId()) && 
 								tripTimes.getDepartureTime(tripTimes.getNumStops() - 2) > 24*60*60){
 							writeTripTime(pattern, lineId, netRoute, tripTimes, -1);
 						}

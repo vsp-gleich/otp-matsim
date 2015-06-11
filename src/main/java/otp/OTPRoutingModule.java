@@ -2,7 +2,6 @@ package otp;
 
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
-import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.population.Leg;
@@ -28,16 +27,12 @@ import org.opentripplanner.routing.core.RoutingRequest;
 import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.core.TraverseModeSet;
-import org.opentripplanner.routing.edgetype.FreeEdge;
 import org.opentripplanner.routing.edgetype.OnboardEdge;
 import org.opentripplanner.routing.edgetype.StreetEdge;
-import org.opentripplanner.routing.edgetype.TransferEdge;
 import org.opentripplanner.routing.edgetype.TransitBoardAlight;
 import org.opentripplanner.routing.graph.Edge;
-import org.opentripplanner.routing.location.StreetLocation;
 import org.opentripplanner.routing.services.PathService;
 import org.opentripplanner.routing.spt.GraphPath;
-import org.opentripplanner.routing.vertextype.IntersectionVertex;
 import org.opentripplanner.routing.vertextype.TransitVertex;
 
 import java.text.ParseException;
@@ -221,36 +216,36 @@ public class OTPRoutingModule implements RoutingModule {
                     }
                     // boarding or alighting at a transit stop
                     else if (backEdge instanceof TransitBoardAlight) {
-                        Trip backTrip = state.getBackTrip();
-                        if (((TransitBoardAlight) backEdge).boarding) {
-                        	// boarding
-                            String newStop = ((TransitVertex) state.getVertex()).getStopId().toString();
-                            TransitStopFacility accessFacility = transitSchedule.getFacilities().get(Id.create(newStop, TransitStopFacility.class));
-//                        	System.out.println("Arrived at TransitStop: " + newStop + " .Links traversed: " + linksTraversedInNonTransitMode.toString() + "\n");
+                    	Trip backTrip = state.getBackTrip();
+                    	if (((TransitBoardAlight) backEdge).boarding) {
+                    		// boarding
+                    		String newStop = ((TransitVertex) state.getVertex()).getStopId().toString();
+                    		TransitStopFacility accessFacility = transitSchedule.getFacilities().get(Id.create(newStop, TransitStopFacility.class));
+                    		// System.out.println("Arrived at TransitStop: " + newStop + " .Links traversed: " + linksTraversedInNonTransitMode.toString() + "\n");
 
-                        	if(linksTraversedInNonTransitMode.isEmpty()){
-                        		/* isEmpty: either transfer between lines or trip started directly at this station */
-                        		if(stop != null){
-                        			/* trip has involved boarding or alighting at another transit stop before -> this is a transfer */
-                                    TransitStopFacility egressFacility = transitSchedule.getFacilities().get(Id.create(stop, TransitStopFacility.class));
-                                    legs.addAll(createTeleportationTrip(egressFacility.getLinkId(), accessFacility.getLinkId(), 
-                                    		TELEPORT_TRANSIT_STOP_AREA));
-                        		}
-                        	} else {
-                            	/* Save the walk leg to the transit stop*/
-                            	legs.add(createStreetNetworkNonTransitLeg(otp2MatsimModes.get(nonTransitMode), 
-                        				linksTraversedInNonTransitMode, travelTime, lastDepartureSec, distance));
-                            	/* Save a teleport leg from the last link on the street layer to the transit stop */
-                            	legs.addAll(createTeleportationTrip(linksTraversedInNonTransitMode.get( 
-                                		linksTraversedInNonTransitMode.size()-1), accessFacility.getLinkId(), 
-                                		TELEPORT_TRANSIT_STOP_AREA));
-                            	linksTraversedInNonTransitMode.clear();
-                        	}
-                            time = state.getElapsedTimeSeconds();
-                        	lastDepartureSec = (state.getTimeInMillis() - day.getTime())/1000;
-                        	distance = 0;
-                        	stop = newStop;
-                        } else {
+                    		if(linksTraversedInNonTransitMode.isEmpty()){
+                    			/* isEmpty: either transfer between lines or trip started directly at this station */
+                    			if(stop != null){
+                    				/* trip has involved boarding or alighting at another transit stop before -> this is a transfer */
+                    				TransitStopFacility egressFacility = transitSchedule.getFacilities().get(Id.create(stop, TransitStopFacility.class));
+                    				legs.addAll(createTeleportationTrip(egressFacility.getLinkId(), accessFacility.getLinkId(), 
+                    						TELEPORT_TRANSIT_STOP_AREA));
+                    			}
+                    		} else {
+                    			/* Save the walk leg to the transit stop*/
+                    			legs.add(createStreetNetworkNonTransitLeg(otp2MatsimModes.get(nonTransitMode), 
+                    					linksTraversedInNonTransitMode, travelTime, lastDepartureSec, distance));
+                    			/* Save a teleport leg from the last link on the street layer to the transit stop */
+                    			legs.addAll(createTeleportationTrip(linksTraversedInNonTransitMode.get( 
+                    					linksTraversedInNonTransitMode.size()-1), accessFacility.getLinkId(), 
+                    					TELEPORT_TRANSIT_STOP_AREA));
+                    			linksTraversedInNonTransitMode.clear();
+                    		}
+                    		time = state.getElapsedTimeSeconds();
+                    		lastDepartureSec = (state.getTimeInMillis() - day.getTime())/1000;
+                    		distance = 0;
+                    		stop = newStop;
+                    	} else {
                         	// alighting
                             Leg leg = new LegImpl(PT);
                             String newStop = ((TransitVertex) state.getVertex()).getStopId().toString();
@@ -296,7 +291,6 @@ public class OTPRoutingModule implements RoutingModule {
 		List<TransitRouteStop> emptyList = Collections.emptyList();
 		Id<TransitLine> tlId = Id.create(backTrip.getRoute().getId().toString(), TransitLine.class);
 		Id<TransitRoute> trId = Id.create("", TransitRoute.class);
-		boolean transitRouteFound = false;
 		/*
 		 *  For departures on the second day matsim departure ids may differ 
 		 *  from the otp trip ids in order to differentiate between the first
