@@ -61,14 +61,14 @@ public class OTPRoutingModule implements RoutingModule {
     public static final String TELEPORT_TRANSIT_STOP_AREA = "teleport_transit_stop_area";
 
     // Trips on pt lines according to the TransitSchedule.
-    public static final String PT = "pseudo_pt";
+    public static final String PT = "pt";
 
     // Line switches by OTP.
     public static final String TRANSIT_WALK = "walk";
     
     private static Map<TraverseMode, String> otp2MatsimModes = new HashMap<TraverseMode, String>();
     
-    private TimeZone timeZone = TimeZone.getTimeZone("Europe/Berlin");
+    private final TimeZone timeZone;
 
     
 
@@ -89,15 +89,16 @@ public class OTPRoutingModule implements RoutingModule {
 	private Date day;
 	
 	public OTPRoutingModule(PathService pathservice, TransitSchedule transitSchedule, 
-			Network matsimNetwork, String date, CoordinateTransformation ct) {
+			Network matsimNetwork, String dateString, String timeZoneString, CoordinateTransformation ct) {
 		this.pathservice = pathservice;
 		this.transitSchedule = transitSchedule;
 		this.matsimNetwork = matsimNetwork;
 		this.transitScheduleToPathServiceCt = ct;
+		this.timeZone = TimeZone.getTimeZone(timeZoneString);
 		try {
 			SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd");
 			df.setTimeZone(timeZone);
-			this.day = df.parse(date);
+			this.day = df.parse(dateString);
 		} catch (ParseException e) {
 			throw new RuntimeException(e);
 		}
@@ -295,10 +296,22 @@ public class OTPRoutingModule implements RoutingModule {
 		List<TransitRouteStop> emptyList = Collections.emptyList();
 		Id<TransitLine> tlId = Id.create(backTrip.getRoute().getId().toString(), TransitLine.class);
 		Id<TransitRoute> trId = Id.create("", TransitRoute.class);
+		boolean transitRouteFound = false;
+		/*
+		 *  For departures on the second day matsim departure ids may differ 
+		 *  from the otp trip ids in order to differentiate between the first
+		 *  simulated day and the following day when some agents might finish
+		 *  their journeys started on the first da.
+		 *  In addition to that, some otp trips shortly after midnight are 
+		 *  saved for the previous day, so similar id differences might occur.
+		 *  See ReadGraph.writeTripTime() method
+		 */
 		for(TransitRoute tr: transitSchedule.getTransitLines().get(tlId).getRoutes().values()){
-			if(tr.getDepartures().containsKey(Id.create(backTrip.getId().toString(), Departure.class))){
+			if(tr.getDepartures().containsKey(Id.create(backTrip.getId().toString() + "_0", Departure.class)) ||
+					tr.getDepartures().containsKey(Id.create(backTrip.getId().toString() + "_1", Departure.class)) ||
+					tr.getDepartures().containsKey(Id.create(backTrip.getId().toString() + "_-1", Departure.class))){
 				trId = tr.getId();
-				break;
+				return tsf.createTransitRoute(trId, null , emptyList, null);
 			}
 		}
 		return tsf.createTransitRoute(trId, null , emptyList, null);

@@ -21,6 +21,8 @@ import org.matsim.pt.transitSchedule.api.TransitStopFacility;
 import org.matsim.vehicles.Vehicle;
 import org.matsim.vehicles.VehicleCapacity;
 import org.matsim.vehicles.VehicleType;
+import org.onebusaway.gtfs.model.AgencyAndId;
+import org.onebusaway.gtfs.model.calendar.ServiceDate;
 import org.opentripplanner.routing.edgetype.PatternHop;
 import org.opentripplanner.routing.edgetype.PreAlightEdge;
 import org.opentripplanner.routing.edgetype.PreBoardEdge;
@@ -35,16 +37,24 @@ import org.opentripplanner.routing.trippattern.TripTimes;
 import org.opentripplanner.routing.vertextype.IntersectionVertex;
 import org.opentripplanner.routing.vertextype.TransitStop;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TimeZone;
 
 /**
  * TODO: 
- * -extract timetable for a specific day -> no longer weekday, saturday, sunday overlay
+ * -otp trips which depart at their first stop before the simulation starts 
+ * (that means usually departures before midnight) are simulated to depart at 
+ * the first stop at the simulation begin -> huge delays that can be avoided
+ * by starting the simulation earlier
  * -otp trips saved as frequency -> matsim departures
  * -check otp2matsim transport modes
  */
@@ -52,6 +62,11 @@ public class ReadGraph implements Runnable {
 
     private GraphService graphService;
     private CoordinateTransformation ct;
+    private Set<AgencyAndId> serviceIdsOnDate;
+    private Set<AgencyAndId> serviceIdsOnFollowingDate;
+    private final double scheduleEndTimeOnFollowingDate;
+    private Set<AgencyAndId> serviceIdsOnPreviousDate;
+    private Scenario scenario;
     private final Map<String, String> otp2matsimTransportModes = new HashMap<String, String>();
     private final Map<String, Id<VehicleType>> matsimTransportMode2VehicleType = new HashMap<String, Id<VehicleType>>();
     private Set<String> patternCodesProcessed = new HashSet<String>();
@@ -60,11 +75,48 @@ public class ReadGraph implements Runnable {
         return scenario;
     }
 
-    private Scenario scenario;
-
-    public ReadGraph(GraphService graphService, CoordinateTransformation ct) {
+    /**
+     * Usually otp trips on two consecutive days are saved, because for some 
+     * agents their journey started on the first day might not finish before
+     * the following day, so some pt trips on the second day should be saved in
+     * order to provide scheduled pt trips for all agents.
+     * 
+     * Only otp trips assigned to the date set in the dateString and otp trips 
+     * assigned to the following day that depart at their first stop before 
+     * scheduleEndTimeOnFollowingDate are written into the TransitSchedule.
+     * Especially night bus lines can be assigned to the day before their first
+     * departure, so setting scheduleEndTimeOnFollowingDate to 0 does not
+     * mean that no departures on the following are saved.
+     * 
+     * In addition to that, all otp trips assigned to the day before the date
+     * set in dateString are saved, if their last departure on the second to 
+     * last stop is before midnight. This includes especially night bus lines.
+     */
+    public ReadGraph(GraphService graphService, CoordinateTransformation ct, String dateString, 
+    		String timeZoneString, double scheduleEndTimeOnFollowingDate) {
         this.graphService = graphService;
         this.ct = ct;
+        this.scheduleEndTimeOnFollowingDate = scheduleEndTimeOnFollowingDate;
+        TimeZone timeZone = TimeZone.getTimeZone(timeZoneString);
+        Date dateDate;
+        Calendar dateCalendar = Calendar.getInstance(timeZone);
+        Calendar followingDateCalendar = Calendar.getInstance(timeZone);
+        Calendar previousDateCalendar = Calendar.getInstance(timeZone);
+		try {
+			SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd");
+			df.setTimeZone(timeZone);
+			dateDate = df.parse(dateString);
+		} catch (ParseException e) {
+			throw new RuntimeException(e);
+		}
+		dateCalendar.setTime(dateDate);
+		serviceIdsOnDate = graphService.getGraph().getCalendarService().getServiceIdsOnDate(new ServiceDate(dateCalendar));
+		followingDateCalendar.setTime(dateDate);
+		followingDateCalendar.add(Calendar.DAY_OF_MONTH, 1);
+		serviceIdsOnFollowingDate = graphService.getGraph().getCalendarService().getServiceIdsOnDate(new ServiceDate(followingDateCalendar));
+		previousDateCalendar.setTime(dateDate);
+		previousDateCalendar.add(Calendar.DAY_OF_MONTH, -1);
+		serviceIdsOnPreviousDate = graphService.getGraph().getCalendarService().getServiceIdsOnDate(new ServiceDate(followingDateCalendar));
     }
 
     public void run() {
@@ -244,12 +296,12 @@ public class ReadGraph implements Runnable {
 		Id<TransitLine> lineId = Id.create(pattern.route.getId().toString(), TransitLine.class);
 		if(!patternCodesProcessed.contains(pattern.code)){
 			if(!scenario.getTransitSchedule().getTransitLines().containsKey(lineId)){
-				System.out.println("Line " + lineId.toString() + ", pattern.name: " + pattern.name);
+//				System.out.println("Line " + lineId.toString() + ", pattern.name: " + pattern.name);
 				TransitLine transitLine = scenario.getTransitSchedule().getFactory().createTransitLine(lineId);
 				transitLine.setName(pattern.route.getShortName() + ": " + pattern.route.getLongName());
 				scenario.getTransitSchedule().addTransitLine(transitLine);
 			}
-			System.out.println("Line " + lineId.toString() + ", pattern.name: " + pattern.name + ", code: " + pattern.code + ", route: " + pattern.route);
+//			System.out.println("Line " + lineId.toString() + ", pattern.name: " + pattern.name + ", code: " + pattern.code + ", route: " + pattern.route);
 			Id<Link> startLinkId = Id.create(pattern.getPatternHops().get(0).getBeginStop().getId().toString(), Link.class);
 			Id<Link> endLinkId = Id.create(pattern.getPatternHops().get(pattern.getPatternHops().size()-1).getEndStop().getId().toString(), Link.class);
 			if(pattern.getPatternHops().size() > 0){
@@ -268,43 +320,17 @@ public class ReadGraph implements Runnable {
 					 * arrival and departure offsets
 					 */
 					for(TripTimes tripTimes: pattern.scheduledTimetable.tripTimes){
-						List<TransitRouteStop> transitRouteStops = new LinkedList<TransitRouteStop>();
-						for(int i = 0; i < tripTimes.getNumStops(); i++){
-							/* Assuming that org.onebusaway.gtfs.model.Stop and 
-							 * org.opentripplanner.routing.vertextype.TransitStop use the same ids
-							 */
-							Id<TransitStopFacility> stopId = Id.create(pattern.getStops().get(i).getId().toString(), TransitStopFacility.class);
-							TransitStopFacility stopFacility = scenario.getTransitSchedule().getFacilities().get(stopId);
-							double arrivalDelay = tripTimes.getScheduledArrivalTime(i) - tripTimes.getScheduledArrivalTime(0);
-							double departureDelay = tripTimes.getScheduledDepartureTime(i) - tripTimes.getScheduledArrivalTime(0);
-							TransitRouteStop routeStop = scenario.getTransitSchedule().getFactory().createTransitRouteStop(stopFacility, arrivalDelay, departureDelay);
-							routeStop.setAwaitDepartureTime(true);
-							transitRouteStops.add(routeStop);
+						// save pt trips operating on the day to be simulated
+						if(serviceIdsOnDate.contains(tripTimes.trip.getServiceId())){
+							writeTripTime(pattern, lineId, netRoute, tripTimes, 0);
 						}
-						// Check if a TransitRoute with the same arrival and departure offsets already exists
-						Id<Departure> tripId = Id.create(tripTimes.trip.getId().toString(), Departure.class);
-						Id<Vehicle> vehicleId = Id.create(tripTimes.trip.getId().toString(), Vehicle.class);
-						Departure departure = scenario.getTransitSchedule().getFactory().createDeparture(tripId, tripTimes.getScheduledArrivalTime(0));
-						departure.setVehicleId(vehicleId);
-						VehicleType vehType= scenario.getTransitVehicles().getVehicleTypes().get(
-								matsimTransportMode2VehicleType.get(otp2matsimTransportModes.get(pattern.mode.toString())));
-						Vehicle veh = scenario.getTransitVehicles().getFactory().createVehicle(vehicleId, vehType);
-						scenario.getTransitVehicles().addVehicle(veh);
-
-						boolean existingTransitRouteFound = false;
-						for(TransitRoute transitRoute: scenario.getTransitSchedule().getTransitLines().get(lineId).getRoutes().values()){
-							if(transitRoute.getStops().equals(transitRouteStops)){
-								transitRoute.addDeparture(departure);
-								existingTransitRouteFound = true;
-							}
+						if(serviceIdsOnFollowingDate.contains(tripTimes.trip.getServiceId()) && 
+								tripTimes.getDepartureTime(0) < scheduleEndTimeOnFollowingDate){
+							writeTripTime(pattern, lineId, netRoute, tripTimes, 1);
 						}
-						if(!existingTransitRouteFound){
-							Id<TransitRoute> routeId = Id.create(tripTimes.trip.getId().toString(), TransitRoute.class);
-							TransitRoute transitRoute = scenario.getTransitSchedule().getFactory().createTransitRoute(
-									routeId, netRoute, transitRouteStops, otp2matsimTransportModes.get(pattern.mode.toString()));
-							transitRoute.setDescription("Code: " + pattern.code + ", Name: " + pattern.name);
-							transitRoute.addDeparture(departure);
-							scenario.getTransitSchedule().getTransitLines().get(lineId).addRoute(transitRoute);
+						if(serviceIdsOnFollowingDate.contains(tripTimes.trip.getServiceId()) && 
+								tripTimes.getDepartureTime(tripTimes.getNumStops() - 2) > 24*60*60){
+							writeTripTime(pattern, lineId, netRoute, tripTimes, -1);
 						}
 					}
 				} else {
@@ -314,6 +340,63 @@ public class ReadGraph implements Runnable {
 				System.err.println("No PatternHop for TransitRoute (code) " + pattern.code);
 			}
 			patternCodesProcessed.add(pattern.code);
+		}
+	}
+
+	/*
+	 * For matsim departure ids and matsim vehicle ids "_" add a number is 
+	 * added to the otp trip id in order to avoid duplicate ids by 
+	 * differentiating between trips on the first simulated day ("_0") and 
+	 * trips on the previous ("_-1") or the following day ("_1")
+	 */
+	private void writeTripTime(TripPattern pattern, Id<TransitLine> lineId,
+			NetworkRoute netRoute, TripTimes tripTimes, int day) {
+		List<TransitRouteStop> transitRouteStops = new LinkedList<TransitRouteStop>();
+		for(int i = 0; i < tripTimes.getNumStops(); i++){
+			/* Assuming that org.onebusaway.gtfs.model.Stop and 
+			 * org.opentripplanner.routing.vertextype.TransitStop use the same ids
+			 */
+			Id<TransitStopFacility> stopId = Id.create(pattern.getStops().get(i).getId().toString(), TransitStopFacility.class);
+			TransitStopFacility stopFacility = scenario.getTransitSchedule().getFacilities().get(stopId);
+			double arrivalDelay = tripTimes.getScheduledArrivalTime(i) - tripTimes.getScheduledArrivalTime(0);
+			double departureDelay = tripTimes.getScheduledDepartureTime(i) - tripTimes.getScheduledArrivalTime(0);
+			TransitRouteStop routeStop = scenario.getTransitSchedule().getFactory().createTransitRouteStop(stopFacility, arrivalDelay, departureDelay);
+			routeStop.setAwaitDepartureTime(true);
+			transitRouteStops.add(routeStop);
+		}
+
+		Id<Departure> tripId;
+		Id<Vehicle> vehicleId;
+		Departure departure;
+		
+		// differentiate otp trips repeated on different days to be simulated
+		// -> add id addition and move departure time by number indicated in variable day
+		tripId = Id.create(tripTimes.trip.getId().toString() + "_" + day, Departure.class);
+		vehicleId = Id.create(tripTimes.trip.getId().toString() + "_" + day, Vehicle.class);
+		departure = scenario.getTransitSchedule().getFactory().createDeparture(
+				tripId, tripTimes.getScheduledArrivalTime(0) + day*24*60*60);
+
+		departure.setVehicleId(vehicleId);
+		VehicleType vehType= scenario.getTransitVehicles().getVehicleTypes().get(
+				matsimTransportMode2VehicleType.get(otp2matsimTransportModes.get(pattern.mode.toString())));
+		Vehicle veh = scenario.getTransitVehicles().getFactory().createVehicle(vehicleId, vehType);
+		scenario.getTransitVehicles().addVehicle(veh);
+
+		// Check if a TransitRoute with the same arrival and departure offsets already exists
+		boolean existingTransitRouteFound = false;
+		for(TransitRoute transitRoute: scenario.getTransitSchedule().getTransitLines().get(lineId).getRoutes().values()){
+			if(transitRoute.getStops().equals(transitRouteStops)){
+				transitRoute.addDeparture(departure);
+				existingTransitRouteFound = true;
+			}
+		}
+		if(!existingTransitRouteFound){
+			Id<TransitRoute> routeId = Id.create(tripTimes.trip.getId().toString(), TransitRoute.class);
+			TransitRoute transitRoute = scenario.getTransitSchedule().getFactory().createTransitRoute(
+					routeId, netRoute, transitRouteStops, otp2matsimTransportModes.get(pattern.mode.toString()));
+			transitRoute.setDescription("Code: " + pattern.code + ", Name: " + pattern.name);
+			transitRoute.addDeparture(departure);
+			scenario.getTransitSchedule().getTransitLines().get(lineId).addRoute(transitRoute);
 		}
 	}
 }
