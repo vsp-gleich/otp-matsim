@@ -1,8 +1,5 @@
 package ulm;
 
-import java.util.Calendar;
-import java.util.TimeZone;
-
 public class Consts {
 	/**
 	 * BASEDIR should include Openstreetmap data in a file named *.osm or *.pbf

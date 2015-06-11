@@ -1,12 +1,9 @@
 package ulm;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
-import javax.inject.Provider;
 
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
