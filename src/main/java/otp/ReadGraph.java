@@ -23,6 +23,7 @@ import org.matsim.vehicles.VehicleCapacity;
 import org.matsim.vehicles.VehicleType;
 import org.onebusaway.gtfs.model.AgencyAndId;
 import org.onebusaway.gtfs.model.calendar.ServiceDate;
+import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.edgetype.PatternHop;
 import org.opentripplanner.routing.edgetype.PreAlightEdge;
 import org.opentripplanner.routing.edgetype.PreBoardEdge;
@@ -41,11 +42,9 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
 
@@ -67,9 +66,8 @@ public class ReadGraph implements Runnable {
     private final double scheduleEndTimeOnFollowingDate;
     private Set<AgencyAndId> serviceIdsOnPreviousDate;
     private Scenario scenario;
-    private final Map<String, String> otp2matsimTransportModes = new HashMap<String, String>();
-    private final Map<String, Id<VehicleType>> matsimTransportMode2VehicleType = new HashMap<String, Id<VehicleType>>();
     private Set<String> patternCodesProcessed = new HashSet<String>();
+    private Set<String> otpTransitTraverseModes = new HashSet<String>();
 
     public Scenario getScenario() {
         return scenario;
@@ -133,30 +131,18 @@ public class ReadGraph implements Runnable {
     }
 
     private void initialize() {
-        otp2matsimTransportModes.put("BUS", "bus");
-        otp2matsimTransportModes.put("BUSISH", "bus");
-        otp2matsimTransportModes.put("FERRY", "ship");
-        otp2matsimTransportModes.put("TRAM", "train");
-        otp2matsimTransportModes.put("SUBWAY", "train");
-        otp2matsimTransportModes.put("RAIL", "train");
-        otp2matsimTransportModes.put("CABLE_CAR", "train");
-        otp2matsimTransportModes.put("GONDOLA", "train");
-        otp2matsimTransportModes.put("FUNICULAR", "train");
-        otp2matsimTransportModes.put("TRANSIT", "train");
-        otp2matsimTransportModes.put("TRAINISH", "train");
-
-        matsimTransportMode2VehicleType.put("bus", Id.create("Small Bus", VehicleType.class));
-        matsimTransportMode2VehicleType.put("ship", Id.create("Small Ship", VehicleType.class));
-        matsimTransportMode2VehicleType.put("train", Id.create("Small Train", VehicleType.class));
-        
-        for(Id<VehicleType> idVehType: matsimTransportMode2VehicleType.values()){
-        	VehicleType vehType = scenario.getTransitVehicles().getFactory().createVehicleType(idVehType);
-            VehicleCapacity vehCapacity = scenario.getTransitVehicles().getFactory().createVehicleCapacity();
-            vehCapacity.setSeats(50);
-            vehCapacity.setStandingRoom(50);
-        	vehType.setCapacity(vehCapacity);
-        	scenario.getTransitVehicles().addVehicleType(vehType);
-        }
+    	for(TraverseMode mode: TraverseMode.values()){
+    		if(mode.isTransit()){
+        		otpTransitTraverseModes.add(mode.name());
+            	VehicleType vehType = scenario.getTransitVehicles().getFactory().createVehicleType(
+            			Id.create(mode.name() + " Default Vehicle", VehicleType.class));
+                VehicleCapacity vehCapacity = scenario.getTransitVehicles().getFactory().createVehicleCapacity();
+                vehCapacity.setSeats(50);
+                vehCapacity.setStandingRoom(50);
+            	vehType.setCapacity(vehCapacity);
+            	scenario.getTransitVehicles().addVehicleType(vehType);
+    		}
+    	}
 	}
 
 	private void extractStreetNetwork(Scenario scenario) {
@@ -177,6 +163,10 @@ public class ReadGraph implements Runnable {
                         Link l = network.getFactory().createLink(Id.create(e.getId(), Link.class), fromNode, toNode);
                         l.setFreespeed(((StreetEdge) e).getCarSpeed());
                         l.setLength(e.getDistance());
+//                        System.out.println("link " + l.getId() + " StreetClass " + ((StreetEdge) e).getStreetClass());
+                        // set default capacity (independent from the road type because the road type is unknown)
+                        l.getCapacity(2000);
+                        
                         network.addLink(l);
                     } else if (e instanceof StreetTransitLink) {
                         // Found a street transit link
@@ -199,13 +189,9 @@ public class ReadGraph implements Runnable {
         				coord);
         		network.addNode(node);
         		Id<Link> linkId = Id.createLinkId(stopId);
-        		// Different lines with different modes can use the same stop -> allow all pt modes
         		Link link = network.getFactory().createLink(linkId, node, node);
-                Set<String> allowedModes = new HashSet<String>();
-                for(String mode: otp2matsimTransportModes.values()){
-                    allowedModes.add(mode);
-                }
-        		link.setAllowedModes(allowedModes);
+        		// Different lines with different modes can use the same stop -> allow all pt modes
+        		link.setAllowedModes(otpTransitTraverseModes);
         		// Increase flow and storage capacity in order to avoid pt vehicles blocking each other
         		link.setCapacity(1000000);
         		link.setFreespeed(1000);
@@ -251,10 +237,10 @@ public class ReadGraph implements Runnable {
             	        		                        Node toNode = network.getNodes().get(Id.create(arrivalStop.getStopId().toString(), Node.class));
             	        		                        Link l = network.getFactory().createLink(Id.create(patternHop.getId(), Link.class), fromNode, toNode);
             	        		                        Set<String> allowedModes = new HashSet<String>();
-            	        		                        allowedModes.add(otp2matsimTransportModes.get(patternHop.getMode().toString()));
+            	        		                        allowedModes.add(patternHop.getMode().toString());
             	        		                        l.setAllowedModes(allowedModes);
             	        		                		l.setLength(patternHop.getDistance());
-            	        		                		// Increase capacity and freespeed in order to avoid the pt trips hindering each other
+            	        		                		// Increase capacity and freespeed in order to avoid pt trips hindering each other
             	        		                		l.setCapacity(1000000);
             	        		                		l.setFreespeed(20);
             	        		                        network.addLink(l);
@@ -383,7 +369,7 @@ public class ReadGraph implements Runnable {
 
 		departure.setVehicleId(vehicleId);
 		VehicleType vehType= scenario.getTransitVehicles().getVehicleTypes().get(
-				matsimTransportMode2VehicleType.get(otp2matsimTransportModes.get(pattern.mode.toString())));
+				Id.create(pattern.mode.toString() + " Default Vehicle", VehicleType.class));
 		Vehicle veh = scenario.getTransitVehicles().getFactory().createVehicle(vehicleId, vehType);
 		scenario.getTransitVehicles().addVehicle(veh);
 
@@ -398,7 +384,7 @@ public class ReadGraph implements Runnable {
 		if(!existingTransitRouteFound){
 			Id<TransitRoute> routeId = Id.create(tripTimes.trip.getId().toString(), TransitRoute.class);
 			TransitRoute transitRoute = scenario.getTransitSchedule().getFactory().createTransitRoute(
-					routeId, netRoute, transitRouteStops, otp2matsimTransportModes.get(pattern.mode.toString()));
+					routeId, netRoute, transitRouteStops, pattern.mode.toString());
 			transitRoute.setDescription("Code: " + pattern.code + ", Name: " + pattern.name);
 			transitRoute.addDeparture(departure);
 			scenario.getTransitSchedule().getTransitLines().get(lineId).addRoute(transitRoute);
