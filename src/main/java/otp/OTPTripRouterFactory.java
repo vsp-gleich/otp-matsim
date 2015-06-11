@@ -24,12 +24,13 @@ public final class OTPTripRouterFactory implements
 	
 	private CoordinateTransformation ct;
 	private String day;
+	private String timeZone;
 	private PathService pathservice;
     private TransitSchedule transitSchedule;
 	private Network matsimNetwork;
 
 	public OTPTripRouterFactory(TransitSchedule transitSchedule, Network matsimNetwork, 
-			CoordinateTransformation ct, String day, String graphFile) {
+			CoordinateTransformation ct, String day, String timeZone, String graphFile) {
         GraphService graphservice = createGraphService(graphFile);
         SPTServiceFactory sptService = new GenericAStarFactory();
         pathservice = new RetryingPathServiceImpl(graphservice, sptService);
@@ -37,6 +38,7 @@ public final class OTPTripRouterFactory implements
 		this.matsimNetwork = matsimNetwork;
 		this.ct = ct;
 		this.day = day;
+		this.timeZone = timeZone;
 	}
 
     public static GraphService createGraphService(String graphFile) {
@@ -59,7 +61,7 @@ public final class OTPTripRouterFactory implements
 	public TripRouter instantiateAndConfigureTripRouter(RoutingContext iterationContext) {
 		TripRouter tripRouter = new TripRouter();
 		tripRouter.setRoutingModule("pt", new OTPRoutingModule(pathservice, transitSchedule, 
-				matsimNetwork, day, ct));
+				matsimNetwork, day, timeZone, ct));
 		return tripRouter;
 	}
 	

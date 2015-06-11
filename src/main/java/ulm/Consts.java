@@ -1,5 +1,8 @@
 package ulm;
 
+import java.util.Calendar;
+import java.util.TimeZone;
+
 public class Consts {
 	/**
 	 * BASEDIR should include Openstreetmap data in a file named *.osm or *.pbf
@@ -18,4 +21,8 @@ public class Consts {
 
     // Set this as you like - scenario is created from scratch.
     public static final String TARGET_SCENARIO_COORDINATE_SYSTEM = "EPSG:3857";
+    
+    public static final String TIME_ZONE = "Europe/Berlin";
+    public static final String DATE = "2014-02-14"; // Friday
+    public static final double SCHEDULE_END_TIME_ON_FOLLOWING_DATE = 24*60*60;
 }

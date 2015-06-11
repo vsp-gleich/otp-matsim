@@ -21,11 +21,7 @@ import org.matsim.core.utils.geometry.transformations.IdentityTransformation;
 import org.matsim.pt.router.TransitRouter;
 import org.matsim.pt.transitSchedule.api.TransitScheduleReader;
 import org.matsim.vehicles.VehicleReaderV1;
-//import org.matsim.vis.otfvis.OTFVisConfigGroup;
-//import org.matsim.vis.otfvis.OTFVisConfigGroup.ColoringScheme;
 import otp.OTPTripRouterFactory;
-import ulm.Consts;
-
 
 public class Run {
 	
@@ -75,7 +71,7 @@ public class Run {
 			
 		});
 		controler.setTripRouterFactory(new OTPTripRouterFactory(scenario.getTransitSchedule(), 
-				scenario.getNetwork(), new IdentityTransformation(), "2013-08-24", "/Users/michaelzilske/gtfs-ulm/Graph.obj"));
+				scenario.getNetwork(), new IdentityTransformation(), "2013-08-24", "Europe/Berlin", "/Users/michaelzilske/gtfs-ulm/Graph.obj"));
 		
 		controler.run();
 
