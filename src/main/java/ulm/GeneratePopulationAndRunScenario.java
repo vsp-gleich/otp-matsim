@@ -23,6 +23,7 @@ import org.matsim.core.config.groups.PlanCalcScoreConfigGroup.ActivityParams;
 import org.matsim.core.config.groups.StrategyConfigGroup.StrategySettings;
 import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controler;
+import org.matsim.core.controler.OutputDirectoryHierarchy;
 import org.matsim.core.network.MatsimNetworkReader;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.core.utils.geometry.CoordImpl;
@@ -57,7 +58,7 @@ public class GeneratePopulationAndRunScenario {
 		config.transit().setTransitScheduleFile(Consts.TRANSIT_SCHEDULE_FILE);
 		config.transit().setVehiclesFile(Consts.TRANSIT_VEHICLE_FILE);
 		config.network().setInputFile(Consts.NETWORK_FILE);
-		
+		config.controler().setOverwriteFileSetting(OutputDirectoryHierarchy.OverwriteFileSetting.overwriteExistingFiles);
 		config.controler().setMobsim("qsim");
 		config.controler().setLastIteration(0);
 		config.qsim().setSnapshotStyle("queue");
@@ -111,7 +112,6 @@ public class GeneratePopulationAndRunScenario {
         new PopulationWriter(scenario.getPopulation(), scenario.getNetwork()).writeV5("output/population_vor_Simulation.xml");
 
 		Controler controler = new Controler(scenario);
-		org.matsim.core.utils.io.IOUtils.deleteDirectory(new File(Consts.BASEDIR + "testOneIteration"));
 		controler.addOverridingModule(new AbstractModule() {
 
 			@Override
