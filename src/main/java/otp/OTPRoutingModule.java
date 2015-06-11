@@ -213,9 +213,9 @@ public class OTPRoutingModule implements RoutingModule {
                     	}
                     	linksTraversedInNonTransitMode.add(Id.create(backEdge.getId(), Link.class));
                     	distance = distance + backEdge.getDistance();
-                    }
+                    	
+                    } else if (backEdge instanceof TransitBoardAlight) {
                     // boarding or alighting at a transit stop
-                    else if (backEdge instanceof TransitBoardAlight) {
                     	Trip backTrip = state.getBackTrip();
                     	if (((TransitBoardAlight) backEdge).boarding) {
                     		// boarding

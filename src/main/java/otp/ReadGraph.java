@@ -176,6 +176,7 @@ public class ReadGraph implements Runnable {
                         Node toNode = network.getNodes().get(Id.create(e.getToVertex().getIndex(), Node.class));
                         Link l = network.getFactory().createLink(Id.create(e.getId(), Link.class), fromNode, toNode);
                         l.setFreespeed(((StreetEdge) e).getCarSpeed());
+                        l.setLength(e.getDistance());
                         network.addLink(l);
                     } else if (e instanceof StreetTransitLink) {
                         // Found a street transit link
@@ -252,7 +253,10 @@ public class ReadGraph implements Runnable {
             	        		                        Set<String> allowedModes = new HashSet<String>();
             	        		                        allowedModes.add(otp2matsimTransportModes.get(patternHop.getMode().toString()));
             	        		                        l.setAllowedModes(allowedModes);
+            	        		                		l.setLength(patternHop.getDistance());
+            	        		                		// Increase capacity and freespeed in order to avoid the pt trips hindering each other
             	        		                		l.setCapacity(1000000);
+            	        		                		l.setFreespeed(20);
             	        		                        network.addLink(l);
             	        							}
             	        						}        	        						
