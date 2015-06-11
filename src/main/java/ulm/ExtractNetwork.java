@@ -13,14 +13,16 @@ public class ExtractNetwork {
 
     public static void main(String[] args) {
         ReadGraph readGraph = new ReadGraph(OTPTripRouterFactory.createGraphService(Consts.BASEDIR + "Graph.obj"),
-                TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, Consts.TARGET_SCENARIO_COORDINATE_SYSTEM));
+                TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, 
+                		Consts.TARGET_SCENARIO_COORDINATE_SYSTEM),
+                		Consts.DATE,
+                		Consts.TIME_ZONE,
+                		Consts.SCHEDULE_END_TIME_ON_FOLLOWING_DATE);
         readGraph.run();
         
         Network network = readGraph.getScenario().getNetwork();
-//        MergeNetworks.merge(network, "", readGraph.getDummyPtScenario().getNetwork());
         new NetworkWriter(network).write(Consts.NETWORK_FILE);
-//        new NetworkWriter(readGraph.getDummyPtScenario().getNetwork()).write(Consts.DUMMY_NETWORK_FILE);
-        // Writes only transitStops
+
         new TransitScheduleWriter(readGraph.getScenario().getTransitSchedule()).writeFile(Consts.TRANSIT_SCHEDULE_FILE);
         new VehicleWriterV1(readGraph.getScenario().getTransitVehicles()).writeFile(Consts.TRANSIT_VEHICLE_FILE);
     }
