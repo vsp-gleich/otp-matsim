@@ -132,18 +132,18 @@ public class GeneratePopulationAndRunScenario {
 	}
 
 	private void generatePopulation() {
-		for (int i=0; i<1; ++i) {
+		for (int i=0; i<200; ++i) {
 //			Coord source = randomCoord();
 //			Coord sink = randomCoord();
 			// Walk only legs
 //			Coord source = TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, Consts.TARGET_SCENARIO_COORDINATE_SYSTEM).transform(new CoordImpl(10.0285, 48.4359));
 //			Coord sink =TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, Consts.TARGET_SCENARIO_COORDINATE_SYSTEM).transform(new CoordImpl(10.0278, 48.4357));
 			// walk+pt legs short trip
-//			Coord source = TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, Consts.TARGET_SCENARIO_COORDINATE_SYSTEM).transform(new CoordImpl(10.0310, 48.4339));
-//			Coord sink =TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, Consts.TARGET_SCENARIO_COORDINATE_SYSTEM).transform(new CoordImpl(10.0026, 48.4190));
-			// walk+pt legs long trip
 			Coord source = TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, Consts.TARGET_SCENARIO_COORDINATE_SYSTEM).transform(new CoordImpl(10.0310, 48.4339));
-			Coord sink =TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, Consts.TARGET_SCENARIO_COORDINATE_SYSTEM).transform(new CoordImpl(9.940, 48.366));
+			Coord sink =TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, Consts.TARGET_SCENARIO_COORDINATE_SYSTEM).transform(new CoordImpl(10.0026, 48.4190));
+			// walk+pt legs long trip
+//			Coord source = TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, Consts.TARGET_SCENARIO_COORDINATE_SYSTEM).transform(new CoordImpl(10.0310, 48.4339));
+//			Coord sink =TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, Consts.TARGET_SCENARIO_COORDINATE_SYSTEM).transform(new CoordImpl(9.940, 48.366));
 			Person person = scenario.getPopulation().getFactory().createPerson(Id.create(Integer.toString(i), Person.class));
 			Plan plan = scenario.getPopulation().getFactory().createPlan();
 			plan.addActivity(createHomeStart(source));
@@ -177,8 +177,7 @@ public class GeneratePopulationAndRunScenario {
 
 	private Activity createWork(Coord workLocation) {
 		Activity activity = scenario.getPopulation().getFactory().createActivityFromCoord("work", workLocation);
-//		activity.setEndTime(17*60*60);
-		activity.setEndTime(37*60*60+59*60);
+		activity.setEndTime(17*60*60);
 		return activity;
 	}
 

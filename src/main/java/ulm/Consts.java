@@ -21,5 +21,5 @@ public class Consts {
     
     public static final String TIME_ZONE = "Europe/Berlin";
     public static final String DATE = "2014-02-14"; // Friday
-    public static final double SCHEDULE_END_TIME_ON_FOLLOWING_DATE = 24*60*60;
+    public static final double SCHEDULE_END_TIME_ON_FOLLOWING_DATE = 4*60*60;
 }

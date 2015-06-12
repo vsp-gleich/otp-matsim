@@ -182,7 +182,7 @@ public class OTPRoutingModule implements RoutingModule {
 			List<Id<Link>> linksTraversedInNonTransitMode = new LinkedList<Id<Link>>();
 			for (State state : path.states) {
                 Edge backEdge = state.getBackEdge();
-				System.out.println(state.getNonTransitMode().toString() + " " + backEdge + " " + state);
+//				System.out.println(state.getNonTransitMode().toString() + " " + backEdge + " " + state);
                 if (backEdge != null) {
                     final long travelTime = state.getElapsedTimeSeconds() - time;
                     /*
@@ -258,7 +258,7 @@ public class OTPRoutingModule implements RoutingModule {
                             leg.setRoute(route);
                             leg.setTravelTime(travelTime);
                             leg.setDepartureTime(lastDepartureSec);
-                            System.out.println(lastDepartureSec/(60*60) + ":"+ (lastDepartureSec%(60*60))/60 + ":" + lastDepartureSec%60);
+//                            System.out.println(lastDepartureSec/(60*60) + ":"+ (lastDepartureSec%(60*60))/60 + ":" + lastDepartureSec%60);
                             legs.add(leg);
                             time = state.getElapsedTimeSeconds();
                         	lastDepartureSec = (state.getTimeInMillis() - day.getTime())/1000;
@@ -268,7 +268,7 @@ public class OTPRoutingModule implements RoutingModule {
                         // OnboardEdge: interface for all otp edges onboard a pt vehicle
                         // TransitBoardAlight implements OnboardEdge, but always returns 0
                     } else if (backEdge instanceof OnboardEdge) {
-                    	System.out.println("OnboardEdge " + backEdge.getId() + " with length " + backEdge.getDistance());
+//                    	System.out.println("OnboardEdge " + backEdge.getId() + " with length " + backEdge.getDistance());
                     	distance = distance + backEdge.getDistance();
                     }
                 }
