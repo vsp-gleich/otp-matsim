@@ -83,13 +83,21 @@ public class OTPRoutingModule implements RoutingModule {
 
 	private Date day;
 	
+	/**
+	 * In order to return different itineraries, let otp calculate several routes and choose one of
+	 * them randomly
+	 */
+	private boolean chooseRandomlyAnOtpParameterProfile;
+	
 	public OTPRoutingModule(PathService pathservice, TransitSchedule transitSchedule, 
-			Network matsimNetwork, String dateString, String timeZoneString, CoordinateTransformation ct) {
+			Network matsimNetwork, String dateString, String timeZoneString, 
+			CoordinateTransformation ct, boolean chooseRandomlyAnOtpParameterProfile) {
 		this.pathservice = pathservice;
 		this.transitSchedule = transitSchedule;
 		this.matsimNetwork = matsimNetwork;
 		this.transitScheduleToPathServiceCt = ct;
 		this.timeZone = TimeZone.getTimeZone(timeZoneString);
+		this.chooseRandomlyAnOtpParameterProfile = chooseRandomlyAnOtpParameterProfile;
 		try {
 			SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd");
 			df.setTimeZone(timeZone);
@@ -141,14 +149,22 @@ public class OTPRoutingModule implements RoutingModule {
 	private LinkedList<Leg> routeLeg(Facility fromFacility, Facility toFacility, double departureTime) {
 		LinkedList<Leg> legs = new LinkedList<Leg>();
 		TraverseModeSet modeSet = new TraverseModeSet();
-		modeSet.setWalk(true);
 		modeSet.setTransit(true);
-//		modeSet.setBicycle(true);
+		OtpParameterProfile profile = OtpParameterProfile.values()[(int) (Math.random()*OtpParameterProfile.values().length)];
+		if(chooseRandomlyAnOtpParameterProfile){
+			modeSet.setWalk(profile.walkAllowed);
+			modeSet.setBicycle(profile.bikeAllowed);
+		} else {
+			modeSet.setWalk(true);
+			modeSet.setBicycle(true);
+		}
 		RoutingRequest options = new RoutingRequest(modeSet);
+		if(chooseRandomlyAnOtpParameterProfile){
+			options.setMaxWalkDistance(profile.maxWalkDistance);
+		}
 		options.setWalkBoardCost(3 * 60); // override low 2-4 minute values
 		options.setBikeBoardCost(3 * 60 * 2);
 		options.setOptimize(OptimizeType.QUICK);
-		options.setMaxWalkDistance(Double.MAX_VALUE);
 		 
 		Calendar when = Calendar.getInstance();
 		when.setTimeZone(timeZone);
@@ -160,6 +176,7 @@ public class OTPRoutingModule implements RoutingModule {
 		Coord toCoord = transitScheduleToPathServiceCt.transform(toFacility.getCoord());
 		options.from =  new GenericLocation(fromCoord.getY(), fromCoord.getX());
 		options.to   =  new GenericLocation(toCoord.getY(), toCoord.getX());
+		
 		options.numItineraries = 1;
 		System.out.println("--------");
 		System.out.println("Path from " + options.from + " to " + options.to + " at " + when);
@@ -295,7 +312,7 @@ public class OTPRoutingModule implements RoutingModule {
 		 *  For departures on the second day matsim departure ids may differ 
 		 *  from the otp trip ids in order to differentiate between the first
 		 *  simulated day and the following day when some agents might finish
-		 *  their journeys started on the first da.
+		 *  their journeys started on the first day.
 		 *  In addition to that, some otp trips shortly after midnight are 
 		 *  saved for the previous day, so similar id differences might occur.
 		 *  See ReadGraph.writeTripTime() method

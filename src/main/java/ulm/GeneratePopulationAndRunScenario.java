@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
@@ -17,6 +18,7 @@ import org.matsim.api.core.v01.population.PopulationWriter;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.config.groups.PlanCalcScoreConfigGroup.ActivityParams;
+import org.matsim.core.config.groups.PlansCalcRouteConfigGroup.ModeRoutingParams;
 import org.matsim.core.config.groups.StrategyConfigGroup.StrategySettings;
 import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controler;
@@ -65,7 +67,7 @@ public class GeneratePopulationAndRunScenario {
 		config.controler().setOutputDirectory(Consts.BASEDIR + "testOneIteration");
 		
 		config.controler().setWriteEventsInterval(1);		
-		config.controler().setLastIteration(0);
+		config.controler().setLastIteration(10);
 		config.controler().setWritePlansInterval(1);
 		
 		ActivityParams home = new ActivityParams("home");
@@ -75,18 +77,18 @@ public class GeneratePopulationAndRunScenario {
 		work.setTypicalDuration(8*60*60);
 		config.planCalcScore().addActivityParams(work);
 		config.planCalcScore().setWriteExperiencedPlans(true);
-
+		config.strategy().setMaxAgentPlanMemorySize(5);
 		
-//		StrategySettings stratSets = new StrategySettings(Id.create("1", StrategySettings.class));
-//		stratSets.setStrategyName("ReRoute");
-//		stratSets.setWeight(0.2);
-//		stratSets.setDisableAfter(8);
+		StrategySettings reRoute = new StrategySettings(Id.create("1", StrategySettings.class));
+		reRoute.setStrategyName("ReRoute");
+		reRoute.setWeight(0.2);
+		reRoute.setDisableAfter(8);
 		StrategySettings expBeta = new StrategySettings(Id.create("2", StrategySettings.class));
 		expBeta.setStrategyName("ChangeExpBeta");
 		expBeta.setWeight(0.6);
 		
 		config.strategy().addStrategySettings(expBeta);
-//		config.strategy().addStrategySettings(stratSets);
+		config.strategy().addStrategySettings(reRoute);
 
         scenario = ScenarioUtils.createScenario(config);
 
@@ -102,7 +104,8 @@ public class GeneratePopulationAndRunScenario {
 						Consts.TARGET_SCENARIO_COORDINATE_SYSTEM, TransformationFactory.WGS84),
                 Consts.DATE,
                 Consts.TIME_ZONE,
-                Consts.OTP_GRAPH_FILE);
+                Consts.OTP_GRAPH_FILE,
+                true);
         
         generatePopulation();
         
@@ -183,7 +186,6 @@ public class GeneratePopulationAndRunScenario {
 
 	private Activity createHomeStart(Coord homeLocation) {
 		Activity activity = scenario.getPopulation().getFactory().createActivityFromCoord("home", homeLocation);
-		activity.setEndTime(0*60*60);
 		activity.setEndTime(9*60*60);
 		return activity;
 	}
