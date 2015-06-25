@@ -194,8 +194,8 @@ public class ReadGraph implements Runnable {
         		link.setAllowedModes(otpTransitTraverseModes);
         		// Increase flow and storage capacity in order to avoid pt vehicles blocking each other
         		link.setCapacity(1000000);
-        		link.setFreespeed(1000);
-        		link.setLength(1000);
+        		link.setFreespeed(1000000);
+        		link.setLength(1000000);
         		network.addLink(link);
         		/* isBlocking set to false because several lines each stopping at a different stop in otp are mapped to one matsim stop */
         		TransitStopFacility transitStopFacility = scenario.getTransitSchedule().getFactory().createTransitStopFacility(
