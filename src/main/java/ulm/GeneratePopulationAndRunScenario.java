@@ -67,7 +67,7 @@ public class GeneratePopulationAndRunScenario {
 		config.controler().setOutputDirectory(Consts.BASEDIR + "testOneIteration");
 		
 		config.controler().setWriteEventsInterval(1);		
-		config.controler().setLastIteration(10);
+		config.controler().setLastIteration(40);
 		config.controler().setWritePlansInterval(1);
 		
 		ActivityParams home = new ActivityParams("home");
@@ -82,7 +82,7 @@ public class GeneratePopulationAndRunScenario {
 		StrategySettings reRoute = new StrategySettings(Id.create("1", StrategySettings.class));
 		reRoute.setStrategyName("ReRoute");
 		reRoute.setWeight(0.2);
-		reRoute.setDisableAfter(8);
+		reRoute.setDisableAfter(15);
 		StrategySettings expBeta = new StrategySettings(Id.create("2", StrategySettings.class));
 		expBeta.setStrategyName("ChangeExpBeta");
 		expBeta.setWeight(0.6);
@@ -105,7 +105,7 @@ public class GeneratePopulationAndRunScenario {
                 Consts.DATE,
                 Consts.TIME_ZONE,
                 Consts.OTP_GRAPH_FILE,
-                true);
+                true, 3);
         
         generatePopulation();
         
@@ -135,18 +135,21 @@ public class GeneratePopulationAndRunScenario {
 	}
 
 	private void generatePopulation() {
-		for (int i=0; i<200; ++i) {
+		for (int i=0; i<20; ++i) {
 //			Coord source = randomCoord();
 //			Coord sink = randomCoord();
 			// Walk only legs
 //			Coord source = TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, Consts.TARGET_SCENARIO_COORDINATE_SYSTEM).transform(new CoordImpl(10.0285, 48.4359));
 //			Coord sink =TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, Consts.TARGET_SCENARIO_COORDINATE_SYSTEM).transform(new CoordImpl(10.0278, 48.4357));
-			// walk+pt legs short trip
+			// walk+pt legs short trip: majority rides bicycle
 			Coord source = TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, Consts.TARGET_SCENARIO_COORDINATE_SYSTEM).transform(new CoordImpl(10.0310, 48.4339));
 			Coord sink =TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, Consts.TARGET_SCENARIO_COORDINATE_SYSTEM).transform(new CoordImpl(10.0026, 48.4190));
 			// walk+pt legs long trip
 //			Coord source = TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, Consts.TARGET_SCENARIO_COORDINATE_SYSTEM).transform(new CoordImpl(10.0310, 48.4339));
 //			Coord sink =TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, Consts.TARGET_SCENARIO_COORDINATE_SYSTEM).transform(new CoordImpl(9.940, 48.366));
+			// walk+pt legs: one pt itinerary faster and direct (therefore congested) and one pt itinerary slower due to transfer: most try to use the direct route
+//			Coord source = TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, Consts.TARGET_SCENARIO_COORDINATE_SYSTEM).transform(new CoordImpl(9.94181, 48.41949));
+//			Coord sink =TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, Consts.TARGET_SCENARIO_COORDINATE_SYSTEM).transform(new CoordImpl(9.98902, 48.38826));
 			Person person = scenario.getPopulation().getFactory().createPerson(Id.create(Integer.toString(i), Person.class));
 			Plan plan = scenario.getPopulation().getFactory().createPlan();
 			plan.addActivity(createHomeStart(source));

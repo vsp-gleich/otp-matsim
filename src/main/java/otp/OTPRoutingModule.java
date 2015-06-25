@@ -84,20 +84,28 @@ public class OTPRoutingModule implements RoutingModule {
 	private Date day;
 	
 	/**
-	 * In order to return different itineraries, let otp calculate several routes and choose one of
-	 * them randomly
+	 * In order to return different itineraries, let otp calculate an itinerary for a specific
+	 * otp parameter setting which is chosen by random from the OtpParameterProfile enum
 	 */
 	private boolean chooseRandomlyAnOtpParameterProfile;
 	
+	/**
+	 * In order to return different itineraries, let otp calculate multiple alternatives for the
+	 * parameter settings and choose one of them randomly
+	 */
+	private int numOfAlternativeItinerariesToChooseFromRandomly;
+	
 	public OTPRoutingModule(PathService pathservice, TransitSchedule transitSchedule, 
 			Network matsimNetwork, String dateString, String timeZoneString, 
-			CoordinateTransformation ct, boolean chooseRandomlyAnOtpParameterProfile) {
+			CoordinateTransformation ct, boolean chooseRandomlyAnOtpParameterProfile, 
+			int numOfAlternativeItinerariesToChooseFromRandomly) {
 		this.pathservice = pathservice;
 		this.transitSchedule = transitSchedule;
 		this.matsimNetwork = matsimNetwork;
 		this.transitScheduleToPathServiceCt = ct;
 		this.timeZone = TimeZone.getTimeZone(timeZoneString);
 		this.chooseRandomlyAnOtpParameterProfile = chooseRandomlyAnOtpParameterProfile;
+		this.numOfAlternativeItinerariesToChooseFromRandomly = numOfAlternativeItinerariesToChooseFromRandomly;
 		try {
 			SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd");
 			df.setTimeZone(timeZone);
@@ -158,10 +166,11 @@ public class OTPRoutingModule implements RoutingModule {
 			modeSet.setWalk(true);
 			modeSet.setBicycle(true);
 		}
+		
+		int chosenItineraryAlternative = (int) (Math.random() * numOfAlternativeItinerariesToChooseFromRandomly);
+		
 		RoutingRequest options = new RoutingRequest(modeSet);
-		if(chooseRandomlyAnOtpParameterProfile){
-			options.setMaxWalkDistance(profile.maxWalkDistance);
-		}
+		options.setMaxWalkDistance(Double.MAX_VALUE);
 		options.setWalkBoardCost(3 * 60); // override low 2-4 minute values
 		options.setBikeBoardCost(3 * 60 * 2);
 		options.setOptimize(OptimizeType.QUICK);
@@ -177,7 +186,7 @@ public class OTPRoutingModule implements RoutingModule {
 		options.from =  new GenericLocation(fromCoord.getY(), fromCoord.getX());
 		options.to   =  new GenericLocation(toCoord.getY(), toCoord.getX());
 		
-		options.numItineraries = 1;
+		options.numItineraries = chosenItineraryAlternative + 1;
 		System.out.println("--------");
 		System.out.println("Path from " + options.from + " to " + options.to + " at " + when);
 		System.out.println("\tModes: " + modeSet);
@@ -186,7 +195,8 @@ public class OTPRoutingModule implements RoutingModule {
 		List<GraphPath> paths = pathservice.getPaths(options);
 
 		if (paths != null) {
-			GraphPath path = paths.get(0);
+			// At times otp provides less paths than set in options.numItineraries
+			GraphPath path = paths.get(Math.min(chosenItineraryAlternative, paths.size() - 1));
 			path.dump();
 			String stop = null;
 			long time = 0;

@@ -33,10 +33,12 @@ public final class OTPTripRouterFactory implements
     private TransitSchedule transitSchedule;
 	private Network matsimNetwork;
 	private boolean chooseRandomlyAnOtpParameterProfile;
+	private int numOfAlternativeItinerariesToChooseFromRandomly;
 
 	public OTPTripRouterFactory(TransitSchedule transitSchedule, Network matsimNetwork, 
 			CoordinateTransformation ct, String day, String timeZone, String graphFile,
-			boolean chooseRandomlyAnOtpParameterProfile) {
+			boolean chooseRandomlyAnOtpParameterProfile, 
+			int numOfAlternativeItinerariesToChooseFromRandomly) {
         GraphService graphservice = createGraphService(graphFile);
         SPTServiceFactory sptService = new GenericAStarFactory();
         pathservice = new RetryingPathServiceImpl(graphservice, sptService);
@@ -46,6 +48,7 @@ public final class OTPTripRouterFactory implements
 		this.day = day;
 		this.timeZone = timeZone;
 		this.chooseRandomlyAnOtpParameterProfile = chooseRandomlyAnOtpParameterProfile;
+		this.numOfAlternativeItinerariesToChooseFromRandomly = numOfAlternativeItinerariesToChooseFromRandomly;
 	}
 
     public static GraphService createGraphService(String graphFile) {
@@ -77,7 +80,11 @@ public final class OTPTripRouterFactory implements
 				String mode = ((Leg) tripElements.get( 0 )).getMode();
 				if(mode.equals(TransportMode.transit_walk) || 
 						mode.equals(OTPRoutingModule.TELEPORT_BEGIN_END) || 
-						mode.equals(OTPRoutingModule.TELEPORT_TRANSIT_STOP_AREA)){
+						mode.equals(OTPRoutingModule.TELEPORT_TRANSIT_STOP_AREA)
+								// add walk and bike because they should be routed using otp, too
+								|| mode.equals(TransportMode.walk)
+								|| mode.equals(TransportMode.bike)
+								){
 					return TransportMode.pt;
 				} else {
 					return mode;
@@ -86,7 +93,8 @@ public final class OTPTripRouterFactory implements
 			
 		});
 		tripRouter.setRoutingModule("pt", new OTPRoutingModule(pathservice, transitSchedule, 
-				matsimNetwork, day, timeZone, ct, chooseRandomlyAnOtpParameterProfile));
+				matsimNetwork, day, timeZone, ct, chooseRandomlyAnOtpParameterProfile,
+				numOfAlternativeItinerariesToChooseFromRandomly));
 		return tripRouter;
 	}
 	
