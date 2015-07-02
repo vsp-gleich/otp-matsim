@@ -11,6 +11,7 @@ import org.matsim.api.core.v01.population.Person;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.config.groups.PlanCalcScoreConfigGroup.ActivityParams;
+import org.matsim.core.config.groups.QSimConfigGroup.SnapshotStyle;
 import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controler;
 import org.matsim.core.network.MatsimNetworkReader;
@@ -31,7 +32,7 @@ public class Run {
 		config.scenario().setUseTransit(true);
 		config.controler().setMobsim("qsim");
 		config.controler().setLastIteration(0);
-		config.qsim().setSnapshotStyle("queue");
+		config.qsim().setSnapshotStyle(SnapshotStyle.queue);
 		config.qsim().setSnapshotPeriod(1);
 		config.qsim().setRemoveStuckVehicles(false);
 //		ConfigUtils.addOrGetModule(config, OTFVisConfigGroup.GROUP_NAME, OTFVisConfigGroup.class).setColoringScheme(ColoringScheme.gtfs);
