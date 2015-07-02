@@ -76,7 +76,7 @@ public final class OTPTripRouterFactory implements
 		tripRouter.setMainModeIdentifier(new MainModeIdentifier(){
 
 			@Override
-			public String identifyMainMode(List<PlanElement> tripElements) {
+			public String identifyMainMode(List<? extends PlanElement> tripElements) {
 				String mode = ((Leg) tripElements.get( 0 )).getMode();
 				if(mode.equals(TransportMode.transit_walk) || 
 						mode.equals(OTPRoutingModule.TELEPORT_BEGIN_END) || 

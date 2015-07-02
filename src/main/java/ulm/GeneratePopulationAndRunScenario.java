@@ -19,6 +19,7 @@ import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.config.groups.PlanCalcScoreConfigGroup.ActivityParams;
 import org.matsim.core.config.groups.PlansCalcRouteConfigGroup.ModeRoutingParams;
+import org.matsim.core.config.groups.QSimConfigGroup;
 import org.matsim.core.config.groups.StrategyConfigGroup.StrategySettings;
 import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controler;
@@ -60,7 +61,7 @@ public class GeneratePopulationAndRunScenario {
 		config.controler().setOverwriteFileSetting(OutputDirectoryHierarchy.OverwriteFileSetting.overwriteExistingFiles);
 		config.controler().setMobsim("qsim");
 		config.controler().setLastIteration(0);
-		config.qsim().setSnapshotStyle("queue");
+		config.qsim().setSnapshotStyle(QSimConfigGroup.SnapshotStyle.queue);
 		config.qsim().setSnapshotPeriod(1);
 		config.qsim().setRemoveStuckVehicles(false);
 		config.transitRouter().setMaxBeelineWalkConnectionDistance(1.0);
