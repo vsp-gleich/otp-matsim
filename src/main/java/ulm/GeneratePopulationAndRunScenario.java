@@ -1,25 +1,14 @@
 package ulm;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
-import org.matsim.api.core.v01.population.Activity;
-import org.matsim.api.core.v01.population.Leg;
-import org.matsim.api.core.v01.population.Person;
-import org.matsim.api.core.v01.population.Plan;
-import org.matsim.api.core.v01.population.PopulationWriter;
+import org.matsim.api.core.v01.population.*;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.config.groups.PlanCalcScoreConfigGroup.ActivityParams;
-import org.matsim.core.config.groups.PlansCalcRouteConfigGroup.ModeRoutingParams;
-import org.matsim.core.config.groups.QSimConfigGroup.SnapshotStyle;
+import org.matsim.core.config.groups.QSimConfigGroup;
 import org.matsim.core.config.groups.StrategyConfigGroup.StrategySettings;
 import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controler;
@@ -32,8 +21,12 @@ import org.matsim.pt.router.TransitRouter;
 import org.matsim.pt.transitSchedule.api.TransitScheduleReader;
 import org.matsim.pt.transitSchedule.api.TransitStopFacility;
 import org.matsim.vehicles.VehicleReaderV1;
-
 import otp.OTPTripRouterFactory;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * 
@@ -53,7 +46,6 @@ public class GeneratePopulationAndRunScenario {
 
 	private void run() {
 		Config config = ConfigUtils.createConfig();
-//		config.scenario().setUseVehicles(true);
 		config.scenario().setUseTransit(true);
 		config.transit().setTransitScheduleFile(Consts.TRANSIT_SCHEDULE_FILE);
 		config.transit().setVehiclesFile(Consts.TRANSIT_VEHICLE_FILE);
@@ -61,7 +53,7 @@ public class GeneratePopulationAndRunScenario {
 		config.controler().setOverwriteFileSetting(OutputDirectoryHierarchy.OverwriteFileSetting.overwriteExistingFiles);
 		config.controler().setMobsim("qsim");
 		config.controler().setLastIteration(0);
-		config.qsim().setSnapshotStyle(SnapshotStyle.queue);
+		config.qsim().setSnapshotStyle(QSimConfigGroup.SnapshotStyle.queue);
 		config.qsim().setSnapshotPeriod(1);
 		config.qsim().setRemoveStuckVehicles(false);
 		config.transitRouter().setMaxBeelineWalkConnectionDistance(1.0);
@@ -105,7 +97,7 @@ public class GeneratePopulationAndRunScenario {
 						Consts.TARGET_SCENARIO_COORDINATE_SYSTEM, TransformationFactory.WGS84),
                 Consts.DATE,
                 Consts.TIME_ZONE,
-                Consts.OTP_GRAPH_FILE,
+                Consts.BASEDIR,
                 true, 3);
         
         generatePopulation();

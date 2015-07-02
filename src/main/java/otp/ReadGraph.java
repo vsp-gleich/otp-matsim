@@ -108,19 +108,18 @@ public class ReadGraph implements Runnable {
 			throw new RuntimeException(e);
 		}
 		dateCalendar.setTime(dateDate);
-		serviceIdsOnDate = graphService.getGraph().getCalendarService().getServiceIdsOnDate(new ServiceDate(dateCalendar));
+		serviceIdsOnDate = graphService.getRouter().graph.getCalendarService().getServiceIdsOnDate(new ServiceDate(dateCalendar));
 		followingDateCalendar.setTime(dateDate);
 		followingDateCalendar.add(Calendar.DAY_OF_MONTH, 1);
-		serviceIdsOnFollowingDate = graphService.getGraph().getCalendarService().getServiceIdsOnDate(new ServiceDate(followingDateCalendar));
+		serviceIdsOnFollowingDate = graphService.getRouter().graph.getCalendarService().getServiceIdsOnDate(new ServiceDate(followingDateCalendar));
 		previousDateCalendar.setTime(dateDate);
 		previousDateCalendar.add(Calendar.DAY_OF_MONTH, -1);
-		serviceIdsOnPreviousDate = graphService.getGraph().getCalendarService().getServiceIdsOnDate(new ServiceDate(followingDateCalendar));
+		serviceIdsOnPreviousDate = graphService.getRouter().graph.getCalendarService().getServiceIdsOnDate(new ServiceDate(followingDateCalendar));
     }
 
     public void run() {
         Config ptConfig = ConfigUtils.createConfig();
         ptConfig.scenario().setUseTransit(true);
-        ptConfig.scenario().setUseVehicles(true);
 
         scenario = ScenarioUtils.createScenario(ptConfig);
     	initialize();
@@ -147,14 +146,14 @@ public class ReadGraph implements Runnable {
 
 	private void extractStreetNetwork(Scenario scenario) {
         Network network = scenario.getNetwork();
-        for (Vertex v : graphService.getGraph().getVertices()) {
+        for (Vertex v : graphService.getRouter().graph.getVertices()) {
             if (v instanceof IntersectionVertex) {
                 // Can be an OSM node, but can also be a split OSM way to insert a transit stop.
                 Node n = network.getFactory().createNode(Id.create(v.getIndex(), Node.class), ct.transform(new CoordImpl(v.getX(), v.getY())));
                 network.addNode(n);
             }
         }
-        for (Vertex v : graphService.getGraph().getVertices()) {
+        for (Vertex v : graphService.getRouter().graph.getVertices()) {
             if (v instanceof IntersectionVertex) {
                 for (Edge e : v.getOutgoing()) {
                     if (e instanceof StreetEdge) {
@@ -179,7 +178,7 @@ public class ReadGraph implements Runnable {
     private void extractPtNetworkAndTransitStops(Scenario scenario){
         Network network = scenario.getNetwork();
         /* Extract TransitStops */
-        for (Vertex v : graphService.getGraph().getVertices()) {
+        for (Vertex v : graphService.getRouter().graph.getVertices()) {
         	if (v instanceof TransitStop) {
         		TransitStop transitStop = (TransitStop) v;
         		String stopId = transitStop.getStopId().toString();
@@ -207,7 +206,7 @@ public class ReadGraph implements Runnable {
         	}
         }
         /* Extract links between TransitStops */
-        for(Vertex v: graphService.getGraph().getVertices()){
+        for(Vertex v: graphService.getRouter().graph.getVertices()){
         	if(v instanceof TransitStop){
         		TransitStop departureStop = (TransitStop) v;
         		for(Edge e: v.getOutgoing()){
@@ -259,7 +258,7 @@ public class ReadGraph implements Runnable {
     }
 
     private void extractPtSchedule(Scenario scenario){
-        for(Vertex v: graphService.getGraph().getVertices()){
+        for(Vertex v: graphService.getRouter().graph.getVertices()){
         	if(v instanceof TransitStop){
         		for(Edge e: v.getOutgoing()){
         			/* skip edges between the Transit stop vertex and the PatternStopVertex (departure vertex of a pt line) */

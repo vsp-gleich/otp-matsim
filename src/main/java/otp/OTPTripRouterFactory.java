@@ -1,26 +1,21 @@
 package otp;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.List;
-
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.population.Leg;
 import org.matsim.api.core.v01.population.PlanElement;
 import org.matsim.core.router.MainModeIdentifier;
-import org.matsim.core.router.TripRouterFactory;
 import org.matsim.core.router.RoutingContext;
 import org.matsim.core.router.TripRouter;
+import org.matsim.core.router.TripRouterFactory;
 import org.matsim.core.utils.geometry.CoordinateTransformation;
 import org.matsim.pt.transitSchedule.api.TransitSchedule;
 import org.opentripplanner.routing.graph.Graph;
-import org.opentripplanner.routing.impl.GenericAStarFactory;
-import org.opentripplanner.routing.impl.GraphServiceImpl;
-import org.opentripplanner.routing.impl.RetryingPathServiceImpl;
-import org.opentripplanner.routing.impl.SPTServiceFactory;
+import org.opentripplanner.routing.impl.InputStreamGraphSource;
 import org.opentripplanner.routing.services.GraphService;
-import org.opentripplanner.routing.services.PathService;
+
+import java.io.File;
+import java.util.List;
 
 public final class OTPTripRouterFactory implements
 		TripRouterFactory {
@@ -29,19 +24,17 @@ public final class OTPTripRouterFactory implements
 	private CoordinateTransformation ct;
 	private String day;
 	private String timeZone;
-	private PathService pathservice;
     private TransitSchedule transitSchedule;
 	private Network matsimNetwork;
 	private boolean chooseRandomlyAnOtpParameterProfile;
 	private int numOfAlternativeItinerariesToChooseFromRandomly;
+	private final GraphService graphservice;
 
 	public OTPTripRouterFactory(TransitSchedule transitSchedule, Network matsimNetwork, 
 			CoordinateTransformation ct, String day, String timeZone, String graphFile,
 			boolean chooseRandomlyAnOtpParameterProfile, 
 			int numOfAlternativeItinerariesToChooseFromRandomly) {
-        GraphService graphservice = createGraphService(graphFile);
-        SPTServiceFactory sptService = new GenericAStarFactory();
-        pathservice = new RetryingPathServiceImpl(graphservice, sptService);
+		graphservice = createGraphService(graphFile);
 		this.transitSchedule = transitSchedule;
 		this.matsimNetwork = matsimNetwork;
 		this.ct = ct;
@@ -52,18 +45,9 @@ public final class OTPTripRouterFactory implements
 	}
 
     public static GraphService createGraphService(String graphFile) {
-        try {
-            final Graph graph = Graph.load(new File(graphFile), Graph.LoadLevel.FULL);
-            return new GraphServiceImpl() {
-                public Graph getGraph(String routerId) {
-                    return graph;
-                }
-            };
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        } catch (ClassNotFoundException e) {
-            throw new RuntimeException();
-        }
+		GraphService graphService = new GraphService();
+		graphService.registerGraph("", InputStreamGraphSource.newFileGraphSource("", new File(graphFile), Graph.LoadLevel.FULL));
+		return graphService;
     }
 
 
@@ -92,7 +76,7 @@ public final class OTPTripRouterFactory implements
 			}
 			
 		});
-		tripRouter.setRoutingModule("pt", new OTPRoutingModule(pathservice, transitSchedule, 
+		tripRouter.setRoutingModule("pt", new OTPRoutingModule(graphservice, transitSchedule,
 				matsimNetwork, day, timeZone, ct, chooseRandomlyAnOtpParameterProfile,
 				numOfAlternativeItinerariesToChooseFromRandomly));
 		return tripRouter;

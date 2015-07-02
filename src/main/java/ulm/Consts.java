@@ -13,7 +13,7 @@ public class Consts {
     /** Created by ExtractNetwork*/
     public static final String NETWORK_FILE = "output/extracted-network.xml";
     
-    public static final String OTP_GRAPH_FILE = "output/Graph.obj";
+    public static final String OTP_GRAPH_DIR = "output";
     public static final String POPULATION_FILE = "output/population.xml";
 
     // Set this as you like - scenario is created from scratch.

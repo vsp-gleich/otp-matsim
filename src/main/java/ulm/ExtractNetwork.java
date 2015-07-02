@@ -12,7 +12,7 @@ import otp.ReadGraph;
 public class ExtractNetwork {
 
     public static void main(String[] args) {
-        ReadGraph readGraph = new ReadGraph(OTPTripRouterFactory.createGraphService(Consts.BASEDIR + "Graph.obj"),
+        ReadGraph readGraph = new ReadGraph(OTPTripRouterFactory.createGraphService(Consts.BASEDIR),
                 TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, 
                 		Consts.TARGET_SCENARIO_COORDINATE_SYSTEM),
                 		Consts.DATE,

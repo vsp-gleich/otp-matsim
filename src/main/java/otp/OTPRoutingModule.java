@@ -8,7 +8,6 @@ import org.matsim.api.core.v01.population.Leg;
 import org.matsim.api.core.v01.population.Person;
 import org.matsim.api.core.v01.population.PlanElement;
 import org.matsim.api.core.v01.population.Route;
-import org.matsim.facilities.Facility;
 import org.matsim.core.population.LegImpl;
 import org.matsim.core.population.routes.GenericRouteImpl;
 import org.matsim.core.population.routes.RouteUtils;
@@ -16,23 +15,22 @@ import org.matsim.core.router.RoutingModule;
 import org.matsim.core.router.StageActivityTypes;
 import org.matsim.core.router.StageActivityTypesImpl;
 import org.matsim.core.utils.geometry.CoordinateTransformation;
+import org.matsim.facilities.Facility;
 import org.matsim.pt.PtConstants;
 import org.matsim.pt.routes.ExperimentalTransitRoute;
 import org.matsim.pt.transitSchedule.TransitScheduleFactoryImpl;
 import org.matsim.pt.transitSchedule.api.*;
 import org.onebusaway.gtfs.model.Trip;
 import org.opentripplanner.common.model.GenericLocation;
-import org.opentripplanner.routing.core.OptimizeType;
-import org.opentripplanner.routing.core.RoutingRequest;
-import org.opentripplanner.routing.core.State;
-import org.opentripplanner.routing.core.TraverseMode;
-import org.opentripplanner.routing.core.TraverseModeSet;
+import org.opentripplanner.routing.algorithm.AStar;
+import org.opentripplanner.routing.core.*;
 import org.opentripplanner.routing.edgetype.OnboardEdge;
 import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.edgetype.TransitBoardAlight;
 import org.opentripplanner.routing.graph.Edge;
-import org.opentripplanner.routing.services.PathService;
+import org.opentripplanner.routing.services.GraphService;
 import org.opentripplanner.routing.spt.GraphPath;
+import org.opentripplanner.routing.spt.ShortestPathTree;
 import org.opentripplanner.routing.vertextype.TransitVertex;
 
 import java.text.ParseException;
@@ -73,7 +71,7 @@ public class OTPRoutingModule implements RoutingModule {
 
 	private TransitScheduleFactory tsf = new TransitScheduleFactoryImpl();
 
-	private PathService pathservice;
+	private GraphService pathservice;
 
 	private TransitSchedule transitSchedule;
 	
@@ -95,7 +93,7 @@ public class OTPRoutingModule implements RoutingModule {
 	 */
 	private int numOfAlternativeItinerariesToChooseFromRandomly;
 	
-	public OTPRoutingModule(PathService pathservice, TransitSchedule transitSchedule, 
+	public OTPRoutingModule(GraphService pathservice, TransitSchedule transitSchedule,
 			Network matsimNetwork, String dateString, String timeZoneString, 
 			CoordinateTransformation ct, boolean chooseRandomlyAnOtpParameterProfile, 
 			int numOfAlternativeItinerariesToChooseFromRandomly) {
@@ -191,8 +189,10 @@ public class OTPRoutingModule implements RoutingModule {
 		System.out.println("Path from " + options.from + " to " + options.to + " at " + when);
 		System.out.println("\tModes: " + modeSet);
 		System.out.println("\tOptions: " + options);
+		options.setRoutingContext(pathservice.getRouter().graph);
 
-		List<GraphPath> paths = pathservice.getPaths(options);
+		ShortestPathTree shortestPathTree = new AStar().getShortestPathTree(options);
+		List<GraphPath> paths = shortestPathTree.getPaths();
 
 		if (paths != null) {
 			// At times otp provides less paths than set in options.numItineraries
