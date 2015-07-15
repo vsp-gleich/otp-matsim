@@ -46,7 +46,7 @@ public class GeneratePopulationAndRunScenario {
 
 	private void run() {
 		Config config = ConfigUtils.createConfig();
-		config.scenario().setUseTransit(true);
+		config.transit().setUseTransit(true);
 		config.transit().setTransitScheduleFile(Consts.TRANSIT_SCHEDULE_FILE);
 		config.transit().setVehiclesFile(Consts.TRANSIT_VEHICLE_FILE);
 		config.network().setInputFile(Consts.NETWORK_FILE);
