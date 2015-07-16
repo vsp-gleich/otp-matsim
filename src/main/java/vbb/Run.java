@@ -73,7 +73,7 @@ public class Run {
 		});
 		controler.setTripRouterFactory(new OTPTripRouterFactory(scenario.getTransitSchedule(), 
 				scenario.getNetwork(), new IdentityTransformation(), "2013-08-24", "Europe/Berlin", 
-				"/Users/michaelzilske/gtfs-ulm/Graph.obj", false, 1));
+				"/Users/michaelzilske/gtfs-ulm/Graph.obj", false, 1, false));
 		
 		controler.run();
 

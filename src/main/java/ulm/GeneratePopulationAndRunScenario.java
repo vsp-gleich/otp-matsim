@@ -98,7 +98,8 @@ public class GeneratePopulationAndRunScenario {
                 Consts.DATE,
                 Consts.TIME_ZONE,
                 Consts.BASEDIR,
-                true, 3);
+                true, 3, 
+                Consts.USE_CREATE_PSEUDO_NETWORK_INSTEAD_OF_OTP_PT_NETWORK);
         
         generatePopulation();
         

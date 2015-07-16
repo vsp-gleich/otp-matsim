@@ -18,7 +18,7 @@ public class ExtractNetwork {
                 		Consts.DATE,
                 		Consts.TIME_ZONE,
                 		Consts.SCHEDULE_END_TIME_ON_FOLLOWING_DATE,
-                		true);
+                		Consts.USE_CREATE_PSEUDO_NETWORK_INSTEAD_OF_OTP_PT_NETWORK);
         readGraph.run();
         
         Network network = readGraph.getScenario().getNetwork();

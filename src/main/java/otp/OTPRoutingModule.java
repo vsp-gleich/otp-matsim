@@ -93,10 +93,13 @@ public class OTPRoutingModule implements RoutingModule {
 	 */
 	private int numOfAlternativeItinerariesToChooseFromRandomly;
 	
+    private final boolean useCreatePseudoNetworkInsteadOfOtpPtNetwork;
+	
 	public OTPRoutingModule(GraphService pathservice, TransitSchedule transitSchedule,
 			Network matsimNetwork, String dateString, String timeZoneString, 
 			CoordinateTransformation ct, boolean chooseRandomlyAnOtpParameterProfile, 
-			int numOfAlternativeItinerariesToChooseFromRandomly) {
+			int numOfAlternativeItinerariesToChooseFromRandomly, 
+			boolean useCreatePseudoNetworkInsteadOfOtpPtNetwork) {
 		this.pathservice = pathservice;
 		this.transitSchedule = transitSchedule;
 		this.matsimNetwork = matsimNetwork;
@@ -104,6 +107,7 @@ public class OTPRoutingModule implements RoutingModule {
 		this.timeZone = TimeZone.getTimeZone(timeZoneString);
 		this.chooseRandomlyAnOtpParameterProfile = chooseRandomlyAnOtpParameterProfile;
 		this.numOfAlternativeItinerariesToChooseFromRandomly = numOfAlternativeItinerariesToChooseFromRandomly;
+		this.useCreatePseudoNetworkInsteadOfOtpPtNetwork = useCreatePseudoNetworkInsteadOfOtpPtNetwork;
 		try {
 			SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd");
 			df.setTimeZone(timeZone);
@@ -311,7 +315,71 @@ public class OTPRoutingModule implements RoutingModule {
 		}
 		System.out.println("---------" + npersons++);
 
+		if(useCreatePseudoNetworkInsteadOfOtpPtNetwork){
+			adjustLinkAndStopFacilityIdsForCreatePseudoNetwork(legs);
+		}
 		return legs;
+	}
+
+	/** Replace all TransitStopFacility ids extracted from the otp route 
+	 * with the appropriate ids created by CreatePseudoNetwork
+	 * and replace end link ids of legs before a pt leg and replace
+	 * start link ids of legs after a pt leg
+	 * 
+	 * The replacement takes place as a separate step in order to move this 
+	 * method later to the qsim. 
+	 * The idea behind this, is that the code in routeLeg produces legs from a 
+	 * passenger perspective where one stop can be a set of several 
+	 * neighbouring bus stops created by CreatePseudoNetwork. Only the 
+	 * qsim needs to know which individual bus stop is meant. Therefore the 
+	 * code in routeLeg keeps the stopFacilityIds of otp (which equal the gtfs
+	 * stop ids, e.g. "SWU_900135311") and this method replaces them with the
+	 * stopId created by CreatePseudoNetwork (e.g. "SWU_900135311" or 
+	 * "SWU_900135311.1")
+	 * 
+	 * mzilske/gleich 2015-07-16
+	 */
+	private void adjustLinkAndStopFacilityIdsForCreatePseudoNetwork(LinkedList<Leg> legs) {
+		for(int i = 0; i < legs.size(); i++){
+			Leg leg = legs.get(i);
+			if(leg.getMode().equals(PT)){
+				if(leg.getRoute() instanceof ExperimentalTransitRoute){
+					ExperimentalTransitRoute route = (ExperimentalTransitRoute) leg.getRoute();
+					Id<TransitStopFacility> pseudoNetworkAccessStopId = getPseudoNetworkTransitStopFacilityId(route.getAccessStopId(), route.getLineId(), route.getRouteId());
+					Id<TransitStopFacility> pseudoNetworkEgressStopId = getPseudoNetworkTransitStopFacilityId(route.getEgressStopId(), route.getLineId(), route.getRouteId());
+					ExperimentalTransitRoute correctedRoute = new ExperimentalTransitRoute(
+							transitSchedule.getFacilities().get(pseudoNetworkAccessStopId), 
+							transitSchedule.getFacilities().get(pseudoNetworkEgressStopId),
+							route.getLineId(), route.getRouteId());
+					correctedRoute.setTravelTime(route.getTravelTime());
+					correctedRoute.setDistance(route.getDistance());
+					leg.setRoute(correctedRoute);
+					try{
+						Leg legBefore = legs.get(i-1);
+						legBefore.getRoute().setEndLinkId(transitSchedule.getFacilities().get(pseudoNetworkAccessStopId).getLinkId());
+						Leg legAfter = legs.get(i+1);
+						legAfter.getRoute().setEndLinkId(transitSchedule.getFacilities().get(pseudoNetworkAccessStopId).getLinkId());
+					} catch(Exception e){
+						System.err.println("adjustLinkAndStopFacilityIdsForCreatePseudoNetwork(): start link id respectively end link id of a teleport leg from or towarda pt stop could not be adjusted to the pt link ids created by CreatePseudoNetwork.");
+					}
+				}
+			}
+		}
+
+	}
+
+	private Id<TransitStopFacility> getPseudoNetworkTransitStopFacilityId(Id<TransitStopFacility> stopFacilityId, Id<TransitLine> transitLineId, Id<TransitRoute> transitRouteId) {
+		if(transitSchedule.getTransitLines().get(transitLineId).getRoutes().get(transitRouteId).getStop(transitSchedule.getFacilities().get(stopFacilityId)) != null){
+			return stopFacilityId;
+		} else {
+			int j = 0;
+			Id<TransitStopFacility> stopFacilityIdToBeTested;
+			do{
+				j++;
+				stopFacilityIdToBeTested = Id.create(stopFacilityId.toString() + "." + j, TransitStopFacility.class);
+			} while(transitSchedule.getTransitLines().get(transitLineId).getRoutes().get(transitRouteId).getStop(transitSchedule.getFacilities().get(stopFacilityIdToBeTested)) == null);
+			return stopFacilityIdToBeTested;
+		}
 	}
 
 	private TransitRoute createRoute(Trip backTrip) {

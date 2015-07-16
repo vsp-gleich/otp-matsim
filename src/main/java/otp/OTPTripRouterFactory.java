@@ -29,11 +29,13 @@ public final class OTPTripRouterFactory implements
 	private boolean chooseRandomlyAnOtpParameterProfile;
 	private int numOfAlternativeItinerariesToChooseFromRandomly;
 	private final GraphService graphservice;
+    private final boolean useCreatePseudoNetworkInsteadOfOtpPtNetwork;
 
 	public OTPTripRouterFactory(TransitSchedule transitSchedule, Network matsimNetwork, 
 			CoordinateTransformation ct, String day, String timeZone, String graphFile,
 			boolean chooseRandomlyAnOtpParameterProfile, 
-			int numOfAlternativeItinerariesToChooseFromRandomly) {
+			int numOfAlternativeItinerariesToChooseFromRandomly,
+			boolean useCreatePseudoNetworkInsteadOfOtpPtNetwork) {
 		graphservice = createGraphService(graphFile);
 		this.transitSchedule = transitSchedule;
 		this.matsimNetwork = matsimNetwork;
@@ -42,6 +44,7 @@ public final class OTPTripRouterFactory implements
 		this.timeZone = timeZone;
 		this.chooseRandomlyAnOtpParameterProfile = chooseRandomlyAnOtpParameterProfile;
 		this.numOfAlternativeItinerariesToChooseFromRandomly = numOfAlternativeItinerariesToChooseFromRandomly;
+		this.useCreatePseudoNetworkInsteadOfOtpPtNetwork = useCreatePseudoNetworkInsteadOfOtpPtNetwork;
 	}
 
     public static GraphService createGraphService(String graphFile) {
@@ -78,7 +81,8 @@ public final class OTPTripRouterFactory implements
 		});
 		tripRouter.setRoutingModule("pt", new OTPRoutingModule(graphservice, transitSchedule,
 				matsimNetwork, day, timeZone, ct, chooseRandomlyAnOtpParameterProfile,
-				numOfAlternativeItinerariesToChooseFromRandomly));
+				numOfAlternativeItinerariesToChooseFromRandomly, 
+				useCreatePseudoNetworkInsteadOfOtpPtNetwork));
 		return tripRouter;
 	}
 	
