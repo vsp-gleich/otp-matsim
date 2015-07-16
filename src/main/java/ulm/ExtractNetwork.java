@@ -17,7 +17,8 @@ public class ExtractNetwork {
                 		Consts.TARGET_SCENARIO_COORDINATE_SYSTEM),
                 		Consts.DATE,
                 		Consts.TIME_ZONE,
-                		Consts.SCHEDULE_END_TIME_ON_FOLLOWING_DATE);
+                		Consts.SCHEDULE_END_TIME_ON_FOLLOWING_DATE,
+                		true);
         readGraph.run();
         
         Network network = readGraph.getScenario().getNetwork();

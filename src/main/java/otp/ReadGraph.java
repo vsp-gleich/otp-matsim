@@ -18,6 +18,7 @@ import org.matsim.pt.transitSchedule.api.TransitLine;
 import org.matsim.pt.transitSchedule.api.TransitRoute;
 import org.matsim.pt.transitSchedule.api.TransitRouteStop;
 import org.matsim.pt.transitSchedule.api.TransitStopFacility;
+import org.matsim.pt.utils.CreatePseudoNetwork;
 import org.matsim.vehicles.Vehicle;
 import org.matsim.vehicles.VehicleCapacity;
 import org.matsim.vehicles.VehicleType;
@@ -55,7 +56,6 @@ import java.util.TimeZone;
  * the first stop at the simulation begin -> huge delays that can be avoided
  * by starting the simulation earlier
  * -otp trips saved as frequency -> matsim departures
- * -check otp2matsim transport modes
  */
 public class ReadGraph implements Runnable {
 
@@ -68,6 +68,7 @@ public class ReadGraph implements Runnable {
     private Scenario scenario;
     private Set<String> patternCodesProcessed = new HashSet<String>();
     private Set<String> otpTransitTraverseModes = new HashSet<String>();
+    private final boolean useCreatePseudoNetworkInsteadOfOtpPtNetwork;
 
     public Scenario getScenario() {
         return scenario;
@@ -91,10 +92,12 @@ public class ReadGraph implements Runnable {
      * last stop is before midnight. This includes especially night bus lines.
      */
     public ReadGraph(GraphService graphService, CoordinateTransformation ct, String dateString, 
-    		String timeZoneString, double scheduleEndTimeOnFollowingDate) {
+    		String timeZoneString, double scheduleEndTimeOnFollowingDate, 
+    		boolean useCreatePseudoNetworkInsteadOfOtpPtNetwork) {
         this.graphService = graphService;
         this.ct = ct;
         this.scheduleEndTimeOnFollowingDate = scheduleEndTimeOnFollowingDate;
+        this.useCreatePseudoNetworkInsteadOfOtpPtNetwork = useCreatePseudoNetworkInsteadOfOtpPtNetwork;
         TimeZone timeZone = TimeZone.getTimeZone(timeZoneString);
         Date dateDate;
         Calendar dateCalendar = Calendar.getInstance(timeZone);
@@ -119,14 +122,20 @@ public class ReadGraph implements Runnable {
 
     public void run() {
         Config ptConfig = ConfigUtils.createConfig();
-        ptConfig.scenario().setUseTransit(true);
+        ptConfig.transit().setUseTransit(true);
 
         scenario = ScenarioUtils.createScenario(ptConfig);
     	initialize();
     	
-        extractStreetNetwork(scenario);
-        extractPtNetworkAndTransitStops(scenario);
-        extractPtSchedule(scenario);
+        extractStreetNetwork();
+        extractPtNetworkAndTransitStops();
+        extractPtSchedule();
+        
+		if(useCreatePseudoNetworkInsteadOfOtpPtNetwork){
+			CreatePseudoNetwork ptNetCreator = new CreatePseudoNetwork(scenario.getTransitSchedule(), 
+					scenario.getNetwork(), "PseudoPtNetwork");
+			ptNetCreator.createNetwork();
+		}
     }
 
     private void initialize() {
@@ -144,7 +153,7 @@ public class ReadGraph implements Runnable {
     	}
 	}
 
-	private void extractStreetNetwork(Scenario scenario) {
+	private void extractStreetNetwork() {
         Network network = scenario.getNetwork();
         for (Vertex v : graphService.getRouter().graph.getVertices()) {
             if (v instanceof IntersectionVertex) {
@@ -175,7 +184,7 @@ public class ReadGraph implements Runnable {
         }
     }
 
-    private void extractPtNetworkAndTransitStops(Scenario scenario){
+    private void extractPtNetworkAndTransitStops(){
         Network network = scenario.getNetwork();
         /* Extract TransitStops */
         for (Vertex v : graphService.getRouter().graph.getVertices()) {
@@ -183,81 +192,87 @@ public class ReadGraph implements Runnable {
         		TransitStop transitStop = (TransitStop) v;
         		String stopId = transitStop.getStopId().toString();
         		Coord coord = ct.transform(new CoordImpl(transitStop.getX(), transitStop.getY()));
-        		Node node = network.getFactory().createNode(
-        				Id.createNodeId(stopId),
-        				coord);
-        		network.addNode(node);
-        		Id<Link> linkId = Id.createLinkId(stopId);
-        		Link link = network.getFactory().createLink(linkId, node, node);
-        		// Different lines with different modes can use the same stop -> allow all pt modes
-        		link.setAllowedModes(otpTransitTraverseModes);
-        		// Increase flow and storage capacity in order to avoid pt vehicles blocking each other
-        		link.setCapacity(1000000);
-        		link.setFreespeed(1000000);
-        		link.setLength(1000000);
-        		network.addLink(link);
         		/* isBlocking set to false because several lines each stopping at a different stop in otp are mapped to one matsim stop */
         		TransitStopFacility transitStopFacility = scenario.getTransitSchedule().getFactory().createTransitStopFacility(
         				Id.create(stopId, TransitStopFacility.class),
         				coord,
         				false);
-        		transitStopFacility.setLinkId(linkId);
-        		scenario.getTransitSchedule().addStopFacility(transitStopFacility);
-        	}
-        }
-        /* Extract links between TransitStops */
-        for(Vertex v: graphService.getRouter().graph.getVertices()){
-        	if(v instanceof TransitStop){
-        		TransitStop departureStop = (TransitStop) v;
-        		for(Edge e: v.getOutgoing()){
-        			/* skip edges between the Transit stop vertex and the PatternStopVertex (departure vertex of a pt line) */
-        			if(e instanceof PreBoardEdge){
-        				Vertex allLinesDepartVertex = e.getToVertex();
-        				for(Edge departureEdge: allLinesDepartVertex.getOutgoing()){
-        					// should be always true, but otp's network model might change or might be less strict than it appears
-        					if(departureEdge instanceof TransitBoardAlight && 
-        							departureEdge.getToVertex().getOutgoing().size() == 1){
-        						Edge probablyPatternHop = departureEdge.getToVertex().getOutgoing().iterator().next();
-            					// should be always true, but otp's network model might change or might be less strict than it appears
-        						if(probablyPatternHop instanceof PatternHop){
-        							PatternHop patternHop = (PatternHop) probablyPatternHop;
-            						Vertex lineArrivalVertex = patternHop.getToVertex();
-            						for(Edge arrivalTransitBoardAlight: lineArrivalVertex.getOutgoing()){        							
-            							if(arrivalTransitBoardAlight instanceof TransitBoardAlight){
-            								Vertex allLinesArrivalVertex = arrivalTransitBoardAlight.getToVertex();
-            	        					// should be always true, but otp's network model might change or might be less strict than it appears
-            	        					if(allLinesArrivalVertex.getOutgoing().size() == 1){
-            	        						Edge prealight = allLinesArrivalVertex.getOutgoing().iterator().next();
-            	        						if(prealight instanceof PreAlightEdge){
-            	        							Vertex arrivalStopVertex = prealight.getToVertex();
-            	        							if(arrivalStopVertex instanceof TransitStop){
-            	        								TransitStop arrivalStop = (TransitStop) arrivalStopVertex;
-            	        		                        Node fromNode = network.getNodes().get(Id.create(departureStop.getStopId().toString(), Node.class));
-            	        		                        Node toNode = network.getNodes().get(Id.create(arrivalStop.getStopId().toString(), Node.class));
-            	        		                        Link l = network.getFactory().createLink(Id.create(patternHop.getId(), Link.class), fromNode, toNode);
-            	        		                        Set<String> allowedModes = new HashSet<String>();
-            	        		                        allowedModes.add(patternHop.getMode().toString());
-            	        		                        l.setAllowedModes(allowedModes);
-            	        		                		l.setLength(patternHop.getDistance());
-            	        		                		// Increase capacity and freespeed in order to avoid pt trips hindering each other
-            	        		                		l.setCapacity(1000000);
-            	        		                		l.setFreespeed(20);
-            	        		                        network.addLink(l);
-            	        							}
-            	        						}        	        						
-            	        					}
-            							}
-            						}
-        						}
-        					}
-        				}
-        			}
+        		if(useCreatePseudoNetworkInsteadOfOtpPtNetwork){
+            		scenario.getTransitSchedule().addStopFacility(transitStopFacility);
+        		} else {
+            		Node node = network.getFactory().createNode(
+            				Id.createNodeId(stopId),
+            				coord);
+            		network.addNode(node);
+            		Id<Link> linkId = Id.createLinkId(stopId);
+            		Link link = network.getFactory().createLink(linkId, node, node);
+            		// Different lines with different modes can use the same stop -> allow all pt modes
+            		link.setAllowedModes(otpTransitTraverseModes);
+            		// Increase flow and storage capacity in order to avoid pt vehicles blocking each other
+            		link.setCapacity(1000000);
+            		link.setFreespeed(1000000);
+            		link.setLength(1000000);
+            		network.addLink(link);
+            		transitStopFacility.setLinkId(linkId);
+            		scenario.getTransitSchedule().addStopFacility(transitStopFacility);
         		}
         	}
         }
+        /* Extract links between TransitStops */
+		if(!useCreatePseudoNetworkInsteadOfOtpPtNetwork){
+			for(Vertex v: graphService.getRouter().graph.getVertices()){
+				if(v instanceof TransitStop){
+					TransitStop departureStop = (TransitStop) v;
+					for(Edge e: v.getOutgoing()){
+						/* skip edges between the Transit stop vertex and the PatternStopVertex (departure vertex of a pt line) */
+						if(e instanceof PreBoardEdge){
+							Vertex allLinesDepartVertex = e.getToVertex();
+							for(Edge departureEdge: allLinesDepartVertex.getOutgoing()){
+								// should be always true, but otp's network model might change or might be less strict than it appears
+								if(departureEdge instanceof TransitBoardAlight && 
+										departureEdge.getToVertex().getOutgoing().size() == 1){
+									Edge probablyPatternHop = departureEdge.getToVertex().getOutgoing().iterator().next();
+									// should be always true, but otp's network model might change or might be less strict than it appears
+									if(probablyPatternHop instanceof PatternHop){
+										PatternHop patternHop = (PatternHop) probablyPatternHop;
+										Vertex lineArrivalVertex = patternHop.getToVertex();
+										for(Edge arrivalTransitBoardAlight: lineArrivalVertex.getOutgoing()){        							
+											if(arrivalTransitBoardAlight instanceof TransitBoardAlight){
+												Vertex allLinesArrivalVertex = arrivalTransitBoardAlight.getToVertex();
+												// should be always true, but otp's network model might change or might be less strict than it appears
+												if(allLinesArrivalVertex.getOutgoing().size() == 1){
+													Edge prealight = allLinesArrivalVertex.getOutgoing().iterator().next();
+													if(prealight instanceof PreAlightEdge){
+														Vertex arrivalStopVertex = prealight.getToVertex();
+														if(arrivalStopVertex instanceof TransitStop){
+															TransitStop arrivalStop = (TransitStop) arrivalStopVertex;
+															Node fromNode = network.getNodes().get(Id.create(departureStop.getStopId().toString(), Node.class));
+															Node toNode = network.getNodes().get(Id.create(arrivalStop.getStopId().toString(), Node.class));
+															Link l = network.getFactory().createLink(Id.create(patternHop.getId(), Link.class), fromNode, toNode);
+															Set<String> allowedModes = new HashSet<String>();
+															allowedModes.add(patternHop.getMode().toString());
+															l.setAllowedModes(allowedModes);
+															l.setLength(patternHop.getDistance());
+															// Increase capacity and freespeed in order to avoid pt trips hindering each other
+															l.setCapacity(1000000);
+															l.setFreespeed(20);
+															network.addLink(l);
+														}
+													}        	        						
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
     }
 
-    private void extractPtSchedule(Scenario scenario){
+    private void extractPtSchedule(){
         for(Vertex v: graphService.getRouter().graph.getVertices()){
         	if(v instanceof TransitStop){
         		for(Edge e: v.getOutgoing()){

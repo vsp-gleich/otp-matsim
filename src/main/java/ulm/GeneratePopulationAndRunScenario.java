@@ -50,9 +50,8 @@ public class GeneratePopulationAndRunScenario {
 		config.transit().setTransitScheduleFile(Consts.TRANSIT_SCHEDULE_FILE);
 		config.transit().setVehiclesFile(Consts.TRANSIT_VEHICLE_FILE);
 		config.network().setInputFile(Consts.NETWORK_FILE);
-		config.controler().setOverwriteFileSetting(OutputDirectoryHierarchy.OverwriteFileSetting.overwriteExistingFiles);
+		config.controler().setOverwriteFileSetting(OutputDirectoryHierarchy.OverwriteFileSetting.deleteDirectoryIfExists);
 		config.controler().setMobsim("qsim");
-		config.controler().setLastIteration(0);
 		config.qsim().setSnapshotStyle(QSimConfigGroup.SnapshotStyle.queue);
 		config.qsim().setSnapshotPeriod(1);
 		config.qsim().setRemoveStuckVehicles(false);
@@ -60,8 +59,9 @@ public class GeneratePopulationAndRunScenario {
 		config.controler().setOutputDirectory(Consts.BASEDIR + "testOneIteration");
 		
 		config.controler().setWriteEventsInterval(1);		
-		config.controler().setLastIteration(40);
+		config.controler().setLastIteration(0);
 		config.controler().setWritePlansInterval(1);
+		config.qsim().setEndTime(30*60*60);
 		
 		ActivityParams home = new ActivityParams("home");
 		home.setTypicalDuration(12*60*60);
