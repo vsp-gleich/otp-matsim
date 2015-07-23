@@ -59,9 +59,9 @@ public class GeneratePopulationAndRunScenario {
 		config.controler().setOutputDirectory(Consts.BASEDIR + "testOneIteration");
 		
 		config.controler().setWriteEventsInterval(1);		
-		config.controler().setLastIteration(0);
+		config.controler().setLastIteration(40);
 		config.controler().setWritePlansInterval(1);
-		config.qsim().setEndTime(30*60*60);
+//		config.qsim().setEndTime(30*60*60);
 		
 		ActivityParams home = new ActivityParams("home");
 		home.setTypicalDuration(12*60*60);
@@ -129,7 +129,7 @@ public class GeneratePopulationAndRunScenario {
 	}
 
 	private void generatePopulation() {
-		for (int i=0; i<20; ++i) {
+		for (int i=0; i<200; ++i) {
 //			Coord source = randomCoord();
 //			Coord sink = randomCoord();
 			// Walk only legs
