@@ -378,11 +378,8 @@ public class OTPRoutingModule implements RoutingModule {
 	}
 
 	private Id<TransitStopFacility> getPseudoNetworkTransitStopFacilityId(Id<TransitStopFacility> stopFacilityId, Id<TransitLine> transitLineId, Id<TransitRoute> transitRouteId) {
-		System.out.println("transitLineId: " + transitLineId.toString() + " . transitRouteId: " + transitRouteId + " . stopFacilityId: " + stopFacilityId);
-		if(transitSchedule.getTransitLines().get(transitLineId).
-				getRoutes().get(transitRouteId).
-				getStop(transitSchedule.getFacilities().get(stopFacilityId)
-						) != null){
+		if(transitSchedule.getTransitLines().get(transitLineId).getRoutes().get(transitRouteId).
+				getStop(transitSchedule.getFacilities().get(stopFacilityId)) != null){
 			return stopFacilityId;
 		} else {
 			int j = 0;
