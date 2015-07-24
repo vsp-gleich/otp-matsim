@@ -38,7 +38,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 
 /**
- * TODO:
+ * TODO: -consider schedule export for multiple days. Especially in rural areas otp sometimes returns pt journeys which arrive several days after the departure time.)
  * 
  * @author gleich
  *
@@ -378,6 +378,7 @@ public class OTPRoutingModule implements RoutingModule {
 	}
 
 	private Id<TransitStopFacility> getPseudoNetworkTransitStopFacilityId(Id<TransitStopFacility> stopFacilityId, Id<TransitLine> transitLineId, Id<TransitRoute> transitRouteId) {
+		System.out.println("transitLineId: " + transitLineId.toString() + " . transitRouteId: " + transitRouteId + " . stopFacilityId: " + stopFacilityId);
 		if(transitSchedule.getTransitLines().get(transitLineId).
 				getRoutes().get(transitRouteId).
 				getStop(transitSchedule.getFacilities().get(stopFacilityId)
@@ -440,6 +441,8 @@ public class OTPRoutingModule implements RoutingModule {
 				return tsf.createTransitRoute(trId, null , emptyList, null);
 			}
 		}
+		System.err.println("OTPRoutingModule: No Matsim TransitRoute found for otp trip id " + 
+				backTrip.getId().toString() + " of TransitLine " + backTrip.getRoute().getId().toString() + " . Maybe SCHEDULE_END_TIME_ON_FOLLOWING_DATE is too early, so the trip is not extracted into the Matsim transit-schedule.");
 		return tsf.createTransitRoute(trId, null , emptyList, null);
 	}
 	

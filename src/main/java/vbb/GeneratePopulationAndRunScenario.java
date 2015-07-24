@@ -31,7 +31,6 @@ import java.util.List;
 /**
  * 
  * TODO: Vbb data: 3 vehicles in endless simulation:
- * adjustLinkAndStopFacilityIdsForCreatePseudoNetwork() fails (maybe because gtfs file spans Brandenburg whereas osm data is restricted to Berlin)
  * continuous bus trips are represented in independent segments in vbb gtfs data, e.g. bus 245 from Zoo to Nordbahnhof is cut at Lesser-Ury-Weg, maybe because the headsign changes, otp webserver router knows that and delivers "stay onboard" message -> not only circular lines are splitted; in gtfs transfer.txt 120s min transfer but column stop sequence is continuous; does not work at Grumbkowstr. (Berlin) (VBB:9131002) where circular bus line 250 continues its trip, otp recommends to alight, wait 14 min and board the following bus
  * data has transfer times in transfer.txt
  * 
