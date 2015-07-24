@@ -198,7 +198,7 @@ public class OTPRoutingModule implements RoutingModule {
 		ShortestPathTree shortestPathTree = new AStar().getShortestPathTree(options);
 		List<GraphPath> paths = shortestPathTree.getPaths();
 
-		if (paths != null) {
+		if (paths != null && paths.size() > 0) {
 			// At times otp provides less paths than set in options.numItineraries
 			GraphPath path = paths.get(Math.min(chosenItineraryAlternative, paths.size() - 1));
 			path.dump();
@@ -317,6 +317,7 @@ public class OTPRoutingModule implements RoutingModule {
 
 		if(useCreatePseudoNetworkInsteadOfOtpPtNetwork){
 			adjustLinkAndStopFacilityIdsForCreatePseudoNetwork(legs);
+			legs = addTeleportsBetweenDifferingStopFacilityIds(legs);
 		}
 		return legs;
 	}
@@ -337,6 +338,11 @@ public class OTPRoutingModule implements RoutingModule {
 	 * stopId created by CreatePseudoNetwork (e.g. "SWU_900135311" or 
 	 * "SWU_900135311.1")
 	 * 
+	 * The TELEPORT_BEGIN_END before and after the trip are added later in 
+	 * calcRoute(), so if all link ids of the PT legs are corrected here the
+	 * TELEPORT_BEGIN_END legs will be automatically created with the correct
+	 * link ids.
+	 * 
 	 * mzilske/gleich 2015-07-16
 	 */
 	private void adjustLinkAndStopFacilityIdsForCreatePseudoNetwork(LinkedList<Leg> legs) {
@@ -354,22 +360,28 @@ public class OTPRoutingModule implements RoutingModule {
 					correctedRoute.setTravelTime(route.getTravelTime());
 					correctedRoute.setDistance(route.getDistance());
 					leg.setRoute(correctedRoute);
-					try{
+					if(i > 0){
 						Leg legBefore = legs.get(i-1);
-						legBefore.getRoute().setEndLinkId(transitSchedule.getFacilities().get(pseudoNetworkAccessStopId).getLinkId());
+						if(legBefore.getMode().equals(TELEPORT_TRANSIT_STOP_AREA)){
+							legBefore.getRoute().setEndLinkId(transitSchedule.getFacilities().get(pseudoNetworkAccessStopId).getLinkId());
+						}
+					}
+					if(i + 1 < legs.size()){
 						Leg legAfter = legs.get(i+1);
-						legAfter.getRoute().setEndLinkId(transitSchedule.getFacilities().get(pseudoNetworkAccessStopId).getLinkId());
-					} catch(Exception e){
-						System.err.println("adjustLinkAndStopFacilityIdsForCreatePseudoNetwork(): start link id respectively end link id of a teleport leg from or towarda pt stop could not be adjusted to the pt link ids created by CreatePseudoNetwork.");
+						if(legAfter.getMode().equals(TELEPORT_TRANSIT_STOP_AREA)){
+							legAfter.getRoute().setStartLinkId(transitSchedule.getFacilities().get(pseudoNetworkEgressStopId).getLinkId());
+						}
 					}
 				}
 			}
 		}
-
 	}
 
 	private Id<TransitStopFacility> getPseudoNetworkTransitStopFacilityId(Id<TransitStopFacility> stopFacilityId, Id<TransitLine> transitLineId, Id<TransitRoute> transitRouteId) {
-		if(transitSchedule.getTransitLines().get(transitLineId).getRoutes().get(transitRouteId).getStop(transitSchedule.getFacilities().get(stopFacilityId)) != null){
+		if(transitSchedule.getTransitLines().get(transitLineId).
+				getRoutes().get(transitRouteId).
+				getStop(transitSchedule.getFacilities().get(stopFacilityId)
+						) != null){
 			return stopFacilityId;
 		} else {
 			int j = 0;
@@ -380,6 +392,31 @@ public class OTPRoutingModule implements RoutingModule {
 			} while(transitSchedule.getTransitLines().get(transitLineId).getRoutes().get(transitRouteId).getStop(transitSchedule.getFacilities().get(stopFacilityIdToBeTested)) == null);
 			return stopFacilityIdToBeTested;
 		}
+	}
+	
+	/**
+	 * CreatePseudoNetwork splits some TransitStopFacilities
+	 * -> what used to be a change between lines at the same stop can now be
+	 * a change between lines at two separate stops
+	 * 
+	 * @param legs
+	 */
+	private LinkedList<Leg> addTeleportsBetweenDifferingStopFacilityIds(LinkedList<Leg> legs) {
+		LinkedList<Leg> legsWithAddedTeleports = (LinkedList<Leg>) legs.clone();
+		int offsetBetweenInputAndOutputListIndex = 0;
+		for(int i = 0; i < legs.size() - 1; i++){
+			Leg leg = legs.get(i);
+			Leg nextLeg = legs.get(i+1);
+			if(leg.getMode().equals(PT) && nextLeg.getMode().equals(PT)){
+				if(!leg.getRoute().getEndLinkId().equals(nextLeg.getRoute().getStartLinkId())){
+					offsetBetweenInputAndOutputListIndex++;
+					legsWithAddedTeleports.addAll(i + offsetBetweenInputAndOutputListIndex, 
+							createTeleportationTrip(leg.getRoute().getEndLinkId(), nextLeg.getRoute().getStartLinkId(), 
+    						TELEPORT_TRANSIT_STOP_AREA));
+				}
+			}						
+		}
+		return legsWithAddedTeleports;
 	}
 
 	private TransitRoute createRoute(Trip backTrip) {
