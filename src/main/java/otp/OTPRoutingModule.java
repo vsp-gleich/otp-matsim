@@ -36,6 +36,7 @@ import org.opentripplanner.routing.vertextype.TransitVertex;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import org.apache.log4j.Logger;
 
 /**
  * TODO: -consider schedule export for multiple days. Especially in rural areas otp sometimes returns pt journeys which arrive several days after the departure time.)
@@ -52,6 +53,10 @@ public class OTPRoutingModule implements RoutingModule {
     // Mode used for trips inserted "by hand" (not coming from OTP)
     // to move the agent within the Transit stop area and between the street network and the transit stop.
     public static final String TELEPORT_TRANSIT_STOP_AREA = "teleport_transit_stop_area";
+    
+    // Mode used for pt trips replaced "by hand"
+    // because the trip recommended by otp is not included in the Matsim transitschedule
+    public static final String TELEPORT_MISSING_MATSIM_DEPARTURE = "teleport_missing_matsim_departure";
 
     // Trips on pt lines according to the TransitSchedule.
     public static final String PT = "pt";
@@ -94,6 +99,8 @@ public class OTPRoutingModule implements RoutingModule {
 	private int numOfAlternativeItinerariesToChooseFromRandomly;
 	
     private final boolean useCreatePseudoNetworkInsteadOfOtpPtNetwork;
+	private final static Logger log = Logger.getLogger(OTPRoutingModule.class);
+	private boolean noTransitRouteFoundForAtLeastOneTrip = false;
 	
 	public OTPRoutingModule(GraphService pathservice, TransitSchedule transitSchedule,
 			Network matsimNetwork, String dateString, String timeZoneString, 
@@ -282,15 +289,43 @@ public class OTPRoutingModule implements RoutingModule {
                             String newStop = ((TransitVertex) state.getVertex()).getStopId().toString();
                             TransitStopFacility accessFacility = transitSchedule.getFacilities().get(Id.create(stop, TransitStopFacility.class));
                             TransitStopFacility egressFacility = transitSchedule.getFacilities().get(Id.create(newStop, TransitStopFacility.class));
-                            final ExperimentalTransitRoute route = new ExperimentalTransitRoute( 
-                            		accessFacility, createLine(backTrip), createRoute(backTrip), egressFacility);
-                            route.setTravelTime(travelTime);
-                            route.setDistance(distance);
-                            leg.setRoute(route);
-                            leg.setTravelTime(travelTime);
-                            leg.setDepartureTime(lastDepartureSec);
-//                            System.out.println(lastDepartureSec/(60*60) + ":"+ (lastDepartureSec%(60*60))/60 + ":" + lastDepartureSec%60);
-                            legs.add(leg);
+                            TransitRoute transitRoute = createRoute(backTrip);
+                    		if(!transitRoute.getId().toString().equals("")){
+                    			// A TransitRoute could be found for the otp trip
+                                final ExperimentalTransitRoute route = new ExperimentalTransitRoute( 
+                                		accessFacility, createLine(backTrip), transitRoute, egressFacility);
+                                route.setTravelTime(travelTime);
+                                route.setDistance(distance);
+                                leg.setRoute(route);
+                                leg.setTravelTime(travelTime);
+                                leg.setDepartureTime(lastDepartureSec);
+                                legs.add(leg);
+                    		} else if(state.getTimeInMillis() > day.getTime() + 24*60*60*1000) {
+                    			/* No TransitRoute could be found for the otp trip
+                    			 * 
+                    			 * If the route includes boarding a pt vehicle after the day to be simulated has ended,
+                    			 * it is highly probable that no TransitRoute for this otp trip could be found 
+                    			 * because it was not exported into the extracted Matsim transit schedule. Furthermore,
+                    			 * the route supplied by otp implies probably a very late arrival at the destination,
+                    			 * e.g. the last bus on Friday evening is already gone and as there is no bus service
+                    			 * on weekends, otp recommends to wait for the next departure on Monday. This is not a
+                    			 * realistic result, because most people would choose another means of transport or
+                    			 * another destination or would stay where they are. Therefore exporting the transit
+                    			 * schedule for an even longer time span of multiple days does not seem to be a good
+                    			 * solution, as the agent will eventually choose another plan anyway. In order to avoid
+                    			 * crashes due to otp trips without corresponding TransitRoutes, these are replaced
+                    			 * with teleport legs.
+                    			 */
+                				legs.addAll(createTeleportationTrip(accessFacility.getLinkId(), egressFacility.getLinkId(),
+                						TELEPORT_MISSING_MATSIM_DEPARTURE));
+                				log.info("Pt leg with otp trip id \"" + backTrip.getId().toString() + "\" of TransitLine \"" +
+                						backTrip.getRoute().getId().toString() + " was replaced by a teleport leg.");
+                    		} else {
+                    			// This should nether happen under normal circumstances.
+                    			log.warn("No Matsim TransitRoute found for otp trip id \"" + 
+                    					backTrip.getId().toString() + "\" of TransitLine \"" + backTrip.getRoute().getId().toString() +
+                    					"\" although the otp trip was boarded on the day to be simulated.");
+                    		}
                             time = state.getElapsedTimeSeconds();
                         	lastDepartureSec = (state.getTimeInMillis() - day.getTime())/1000;
                         	distance = 0;
@@ -311,7 +346,7 @@ public class OTPRoutingModule implements RoutingModule {
             	linksTraversedInNonTransitMode.clear();
             }
 		} else {
-			System.out.println("None found " + nonefound++);
+			log.info("No route found for " + ++nonefound + " calcRoute() requests.");
 		}
 		System.out.println("---------" + npersons++);
 
@@ -438,8 +473,8 @@ public class OTPRoutingModule implements RoutingModule {
 				return tsf.createTransitRoute(trId, null , emptyList, null);
 			}
 		}
-		System.err.println("OTPRoutingModule: No Matsim TransitRoute found for otp trip id " + 
-				backTrip.getId().toString() + " of TransitLine " + backTrip.getRoute().getId().toString() + " . Maybe SCHEDULE_END_TIME_ON_FOLLOWING_DATE is too early, so the trip is not extracted into the Matsim transit-schedule.");
+		log.info("No Matsim TransitRoute found for otp trip id \"" + 
+				backTrip.getId().toString() + "\" of TransitLine \"" + backTrip.getRoute().getId().toString() + "\". \nMaybe SCHEDULE_END_TIME_ON_FOLLOWING_DATE is too early, so the trip is not extracted into the Matsim transit schedule.");
 		return tsf.createTransitRoute(trId, null , emptyList, null);
 	}
 	
