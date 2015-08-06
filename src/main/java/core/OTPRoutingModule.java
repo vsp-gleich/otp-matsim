@@ -1,4 +1,4 @@
-package otp;
+package core;
 
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;

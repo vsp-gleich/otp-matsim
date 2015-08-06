@@ -1,4 +1,4 @@
-package otp;
+package core;
 
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
@@ -63,7 +63,7 @@ public class ReadGraph implements Runnable {
     private CoordinateTransformation ct;
     private Set<AgencyAndId> serviceIdsOnDate;
     private Set<AgencyAndId> serviceIdsOnFollowingDate;
-    private final double scheduleEndTimeOnFollowingDate;
+    private final int scheduleEndTimeOnFollowingDate;
     private Set<AgencyAndId> serviceIdsOnPreviousDate;
     private Scenario scenario;
     private Set<String> patternCodesProcessed = new HashSet<String>();
@@ -92,7 +92,7 @@ public class ReadGraph implements Runnable {
      * last stop is before midnight. This includes especially night bus lines.
      */
     public ReadGraph(GraphService graphService, CoordinateTransformation ct, String dateString, 
-    		String timeZoneString, double scheduleEndTimeOnFollowingDate, 
+    		String timeZoneString, int scheduleEndTimeOnFollowingDate, 
     		boolean useCreatePseudoNetworkInsteadOfOtpPtNetwork) {
         this.graphService = graphService;
         this.ct = ct;

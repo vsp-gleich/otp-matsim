@@ -1,4 +1,4 @@
-package vbb;
+package run;
 
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
@@ -21,7 +21,8 @@ import org.matsim.pt.router.TransitRouter;
 import org.matsim.pt.transitSchedule.api.TransitScheduleReader;
 import org.matsim.pt.transitSchedule.api.TransitStopFacility;
 import org.matsim.vehicles.VehicleReaderV1;
-import otp.OTPTripRouterFactory;
+
+import core.OTPTripRouterFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -29,11 +30,9 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * 
- * TODO: Vbb data: 3 vehicles in endless simulation:
- * continuous bus trips are represented in independent segments in vbb gtfs data, e.g. bus 245 from Zoo to Nordbahnhof is cut at Lesser-Ury-Weg, maybe because the headsign changes, otp webserver router knows that and delivers "stay onboard" message -> not only circular lines are splitted; in gtfs transfer.txt 120s min transfer but column stop sequence is continuous; does not work at Grumbkowstr. (Berlin) (VBB:9131002) where circular bus line 250 continues its trip, otp recommends to alight, wait 14 min and board the following bus
- * data has transfer times in transfer.txt
- * 
+ * Generates an example population with home->work->home trips. All home and
+ * work activities are located in the vicinity of TransitStopFacilities which
+ * are chosen by random. The outcome population is simulated a single iteration.
  * 
  * @author gleich
  *
@@ -42,27 +41,53 @@ public class GeneratePopulationAndRunScenario {
 
     private Scenario scenario;
     private ArrayList<TransitStopFacility> facs;
+	private String otpGraphDir;
+	private String targetScenarioCoordinateSystem;
+	private String date;
+	private	String timeZone;
+	private boolean useCreatePseudoNetworkInsteadOfOtpPtNetwork;
+	private String networkFile;
+	private String transitScheduleFile;
+	private String transitVehicleFile;
+	private String populationFile;
+	private String outputDir;
+	private int populationSize;
+	private int lastIteration;
 
-    public static void main(String[] args) throws IOException, ClassNotFoundException {
-		new GeneratePopulationAndRunScenario().run();
-	}
-
-	private void run() {
+    public GeneratePopulationAndRunScenario(String otpGraphDir, String targetScenarioCoordinateSystem, String date, 
+			String timeZone, boolean useCreatePseudoNetworkInsteadOfOtpPtNetwork,
+			String networkFile, String transitScheduleFile, String transitVehicleFile, 
+			String populationFile, String outputDir, int populationSize, int lastIteration){
+		this.otpGraphDir = otpGraphDir;
+		this.targetScenarioCoordinateSystem = targetScenarioCoordinateSystem;
+		this.date = date;
+		this.timeZone = timeZone;
+		this.useCreatePseudoNetworkInsteadOfOtpPtNetwork = useCreatePseudoNetworkInsteadOfOtpPtNetwork;
+		this.networkFile = networkFile;
+		this.transitScheduleFile = transitScheduleFile;
+		this.transitVehicleFile = transitVehicleFile;
+		this.populationFile = populationFile;
+		this.outputDir = outputDir;
+		this.populationSize = populationSize;
+		this.lastIteration = lastIteration;
+    }
+    
+	public void run() {
 		Config config = ConfigUtils.createConfig();
 		config.transit().setUseTransit(true);
-		config.transit().setTransitScheduleFile(Consts.TRANSIT_SCHEDULE_FILE);
-		config.transit().setVehiclesFile(Consts.TRANSIT_VEHICLE_FILE);
-		config.network().setInputFile(Consts.NETWORK_FILE);
+		config.transit().setTransitScheduleFile(transitScheduleFile);
+		config.transit().setVehiclesFile(transitVehicleFile);
+		config.network().setInputFile(networkFile);
 		config.controler().setOverwriteFileSetting(OutputDirectoryHierarchy.OverwriteFileSetting.deleteDirectoryIfExists);
 		config.controler().setMobsim("qsim");
 		config.qsim().setSnapshotStyle(QSimConfigGroup.SnapshotStyle.queue);
 		config.qsim().setSnapshotPeriod(1);
 		config.qsim().setRemoveStuckVehicles(false);
 		config.transitRouter().setMaxBeelineWalkConnectionDistance(1.0);
-		config.controler().setOutputDirectory(Consts.BASEDIR + "testOneIteration");
+		config.controler().setOutputDirectory(outputDir);
 		
 		config.controler().setWriteEventsInterval(1);		
-		config.controler().setLastIteration(0);
+		config.controler().setLastIteration(lastIteration);
 		config.controler().setWritePlansInterval(1);
 		config.qsim().setEndTime(30*60*60);
 		
@@ -78,7 +103,7 @@ public class GeneratePopulationAndRunScenario {
 		StrategySettings reRoute = new StrategySettings(Id.create("1", StrategySettings.class));
 		reRoute.setStrategyName("ReRoute");
 		reRoute.setWeight(0.2);
-		reRoute.setDisableAfter(15);
+		reRoute.setDisableAfter(40);
 		StrategySettings expBeta = new StrategySettings(Id.create("2", StrategySettings.class));
 		expBeta.setStrategyName("ChangeExpBeta");
 		expBeta.setWeight(0.6);
@@ -97,16 +122,16 @@ public class GeneratePopulationAndRunScenario {
 
 		final OTPTripRouterFactory trf = new OTPTripRouterFactory(scenario.getTransitSchedule(),
 				scenario.getNetwork(), TransformationFactory.getCoordinateTransformation( 
-						Consts.TARGET_SCENARIO_COORDINATE_SYSTEM, TransformationFactory.WGS84),
-                Consts.DATE,
-                Consts.TIME_ZONE,
-                Consts.BASEDIR,
+						targetScenarioCoordinateSystem, TransformationFactory.WGS84),
+				date,
+				timeZone,
+                otpGraphDir,
                 true, 3, 
-                Consts.USE_CREATE_PSEUDO_NETWORK_INSTEAD_OF_OTP_PT_NETWORK);
+                useCreatePseudoNetworkInsteadOfOtpPtNetwork);
         
         generatePopulation();
         
-        new PopulationWriter(scenario.getPopulation(), scenario.getNetwork()).writeV5("output/population_vor_Simulation.xml");
+        new PopulationWriter(scenario.getPopulation(), scenario.getNetwork()).writeV5(populationFile);
 
 		Controler controler = new Controler(scenario);
 		controler.addOverridingModule(new AbstractModule() {
@@ -132,7 +157,7 @@ public class GeneratePopulationAndRunScenario {
 	}
 
 	private void generatePopulation() {
-		for (int i=0; i<10; ++i) {
+		for (int i=0; i<populationSize; ++i) {
 			Coord source = randomCoord();
 			Coord sink = randomCoord();
 			Person person = scenario.getPopulation().getFactory().createPerson(Id.create(Integer.toString(i), Person.class));

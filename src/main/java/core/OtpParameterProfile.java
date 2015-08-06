@@ -1,4 +1,4 @@
-package otp;
+package core;
 
 /**
  * Parameter Sets for otp route requests

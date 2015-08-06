@@ -1,4 +1,4 @@
-package ulm;
+package examples.ulm;
 
 import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
@@ -21,7 +21,8 @@ import org.matsim.pt.router.TransitRouter;
 import org.matsim.pt.transitSchedule.api.TransitScheduleReader;
 import org.matsim.pt.transitSchedule.api.TransitStopFacility;
 import org.matsim.vehicles.VehicleReaderV1;
-import otp.OTPTripRouterFactory;
+
+import core.OTPTripRouterFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -47,16 +48,16 @@ public class GeneratePopulationAndRunScenario {
 	private void run() {
 		Config config = ConfigUtils.createConfig();
 		config.transit().setUseTransit(true);
-		config.transit().setTransitScheduleFile(Consts.TRANSIT_SCHEDULE_FILE);
-		config.transit().setVehiclesFile(Consts.TRANSIT_VEHICLE_FILE);
-		config.network().setInputFile(Consts.NETWORK_FILE);
+		config.transit().setTransitScheduleFile(Run.TRANSIT_SCHEDULE_FILE);
+		config.transit().setVehiclesFile(Run.TRANSIT_VEHICLE_FILE);
+		config.network().setInputFile(Run.NETWORK_FILE);
 		config.controler().setOverwriteFileSetting(OutputDirectoryHierarchy.OverwriteFileSetting.deleteDirectoryIfExists);
 		config.controler().setMobsim("qsim");
 		config.qsim().setSnapshotStyle(QSimConfigGroup.SnapshotStyle.queue);
 		config.qsim().setSnapshotPeriod(1);
 		config.qsim().setRemoveStuckVehicles(false);
 		config.transitRouter().setMaxBeelineWalkConnectionDistance(1.0);
-		config.controler().setOutputDirectory(Consts.BASEDIR + "testOneIteration");
+		config.controler().setOutputDirectory(Run.BASEDIR + "testOneIteration");
 		
 		config.controler().setWriteEventsInterval(1);		
 		config.controler().setLastIteration(40);
@@ -94,12 +95,12 @@ public class GeneratePopulationAndRunScenario {
 
 		final OTPTripRouterFactory trf = new OTPTripRouterFactory(scenario.getTransitSchedule(),
 				scenario.getNetwork(), TransformationFactory.getCoordinateTransformation( 
-						Consts.TARGET_SCENARIO_COORDINATE_SYSTEM, TransformationFactory.WGS84),
-                Consts.DATE,
-                Consts.TIME_ZONE,
-                Consts.BASEDIR,
+						Run.TARGET_SCENARIO_COORDINATE_SYSTEM, TransformationFactory.WGS84),
+                Run.DATE,
+                Run.TIME_ZONE,
+                Run.BASEDIR,
                 true, 3, 
-                Consts.USE_CREATE_PSEUDO_NETWORK_INSTEAD_OF_OTP_PT_NETWORK);
+                Run.USE_CREATE_PSEUDO_NETWORK_INSTEAD_OF_OTP_PT_NETWORK);
         
         generatePopulation();
         
@@ -136,8 +137,8 @@ public class GeneratePopulationAndRunScenario {
 //			Coord source = TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, Consts.TARGET_SCENARIO_COORDINATE_SYSTEM).transform(new CoordImpl(10.0285, 48.4359));
 //			Coord sink =TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, Consts.TARGET_SCENARIO_COORDINATE_SYSTEM).transform(new CoordImpl(10.0278, 48.4357));
 			// walk+pt legs short trip: majority rides bicycle
-			Coord source = TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, Consts.TARGET_SCENARIO_COORDINATE_SYSTEM).transform(new CoordImpl(10.0310, 48.4339));
-			Coord sink =TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, Consts.TARGET_SCENARIO_COORDINATE_SYSTEM).transform(new CoordImpl(10.0026, 48.4190));
+			Coord source = TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, Run.TARGET_SCENARIO_COORDINATE_SYSTEM).transform(new CoordImpl(10.0310, 48.4339));
+			Coord sink =TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, Run.TARGET_SCENARIO_COORDINATE_SYSTEM).transform(new CoordImpl(10.0026, 48.4190));
 			// walk+pt legs long trip
 //			Coord source = TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, Consts.TARGET_SCENARIO_COORDINATE_SYSTEM).transform(new CoordImpl(10.0310, 48.4339));
 //			Coord sink =TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, Consts.TARGET_SCENARIO_COORDINATE_SYSTEM).transform(new CoordImpl(9.940, 48.366));
