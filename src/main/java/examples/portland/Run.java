@@ -4,6 +4,16 @@ import run.ExtractNetwork;
 import run.GeneratePopulationAndRunScenario;
 import run.RunOTP;
 
+/**
+ * fails (does not terminate) after routes were calculated:
+ *  --- END GRAPHPATH DUMP ---
+Total meters walked in this graphpath: 644.9832631544982
+---------9
+
+ * 
+ * @author gleich
+ *
+ */
 public class Run {
 
     public static final String BASEDIR = "output/Portland/";

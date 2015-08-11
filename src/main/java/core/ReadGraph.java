@@ -57,7 +57,8 @@ import java.util.TimeZone;
  * (that means usually departures before midnight) are simulated to depart at 
  * the first stop at the simulation begin -> huge delays that can be avoided
  * by starting the simulation earlier
- * -otp trips saved as frequency -> matsim departures
+ * -otp trips saved as frequency cannot be handled yet (however we do not have
+ * any example for a gtfs data set using frequencies)
  */
 public class ReadGraph implements Runnable {
 

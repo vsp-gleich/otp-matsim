@@ -91,22 +91,28 @@ public class OTPRoutingModule implements RoutingModule {
 
 	private Date day;
 	
-	/**
-	 * In order to return different itineraries, let otp calculate an itinerary for a specific
-	 * otp parameter setting which is chosen by random from the OtpParameterProfile enum
-	 */
 	private boolean chooseRandomlyAnOtpParameterProfile;
-	
-	/**
-	 * In order to return different itineraries, let otp calculate multiple alternatives for the
-	 * parameter settings and choose one of them randomly
-	 */
+
 	private int numOfAlternativeItinerariesToChooseFromRandomly;
 	
     private final boolean useCreatePseudoNetworkInsteadOfOtpPtNetwork;
 	private final static Logger log = Logger.getLogger(OTPRoutingModule.class);
 	private boolean noTransitRouteFoundForAtLeastOneTrip = false;
 	
+	/**
+	 * 
+	 * @param pathservice
+	 * @param transitSchedule
+	 * @param matsimNetwork
+	 * @param dateString : Should be the same date as the day for which the transitSchedule was exported
+	 * @param timeZoneString
+	 * @param ct
+	 * @param chooseRandomlyAnOtpParameterProfile : In order to return different itineraries, let 
+	 * otp calculate an itinerary for a specific otp parameter setting which is chosen by random from the OtpParameterProfile enum
+	 * @param numOfAlternativeItinerariesToChooseFromRandomly : In order to return different itineraries, 
+	 * let otp calculate multiple alternatives for the same parameter settings and choose one of them randomly
+	 * @param useCreatePseudoNetworkInsteadOfOtpPtNetwork
+	 */
 	public OTPRoutingModule(GraphService pathservice, TransitSchedule transitSchedule,
 			Network matsimNetwork, String dateString, String timeZoneString, 
 			CoordinateTransformation ct, boolean chooseRandomlyAnOtpParameterProfile, 
@@ -294,7 +300,7 @@ public class OTPRoutingModule implements RoutingModule {
                             String newStop = ((TransitVertex) state.getVertex()).getStopId().toString();
                             TransitStopFacility accessFacility = transitSchedule.getFacilities().get(Id.create(stop, TransitStopFacility.class));
                             TransitStopFacility egressFacility = transitSchedule.getFacilities().get(Id.create(newStop, TransitStopFacility.class));
-                            TransitRoute transitRoute = createRoute(backTrip);
+                            TransitRoute transitRoute = createRoute(backTrip, state.getTimeInMillis(), egressFacility);
                     		if(!transitRoute.getId().toString().equals("")){
                     			// A TransitRoute could be found for the otp trip
                                 final ExperimentalTransitRoute route = new ExperimentalTransitRoute( 
@@ -327,7 +333,8 @@ public class OTPRoutingModule implements RoutingModule {
                     					" which could not be found in the matsim transit schedule.");
                     			break;
                     		} else {
-                    			// This should nether happen under normal circumstances.
+                    			// This should nether happen, because all otp trips on the day to be simulated are
+                    			// exported into the matsim schedule.
                     			log.warn("No Matsim TransitRoute found for otp trip id \"" + 
                     					backTrip.getId().toString() + "\" of TransitLine \"" + backTrip.getRoute().getId().toString() +
                     					"\" although the otp trip was boarded on the day to be simulated.");
@@ -378,6 +385,11 @@ public class OTPRoutingModule implements RoutingModule {
 	 * stop ids, e.g. "SWU_900135311") and this method replaces them with the
 	 * stopId created by CreatePseudoNetwork (e.g. "SWU_900135311" or 
 	 * "SWU_900135311.1")
+	 * 
+	 * Unfortunately a recent improvement (2015-08-11) of createRoute() method
+	 * requires the usage of the correct TransitStopFacility Ids used in the 
+	 * matsim transit schedule, so getPseudoNetworkTransitStopFacilityId() is 
+	 * used there, too.
 	 * 
 	 * The TELEPORT_BEGIN_END before and after the trip are added later in 
 	 * calcRoute(), so if all link ids of the PT legs are corrected here the
@@ -458,25 +470,85 @@ public class OTPRoutingModule implements RoutingModule {
 		return legsWithAddedTeleports;
 	}
 
-	private TransitRoute createRoute(Trip backTrip) {
+	private TransitRoute createRoute(Trip backTrip, long timeInMillis, TransitStopFacility otpEgressFacility) {
 		List<TransitRouteStop> emptyList = Collections.emptyList();
 		Id<TransitLine> tlId = Id.create(backTrip.getRoute().getId().toString(), TransitLine.class);
 		Id<TransitRoute> trId = Id.create("", TransitRoute.class);
 		/*
-		 *  For departures on the second day matsim departure ids may differ 
-		 *  from the otp trip ids in order to differentiate between the first
-		 *  simulated day and the following day when some agents might finish
-		 *  their journeys started on the first day.
-		 *  In addition to that, some otp trips shortly after midnight are 
-		 *  saved for the previous day, so similar id differences might occur.
-		 *  See ReadGraph.writeTripTime() method
+		 * Check all TransitRoutes of TransitLine tlId whether they include
+		 * a Matsim Departure whose id corresponds to the otp trip id given
+		 * in the otp routing result and whose arrival time corresponds to
+		 * the arrival time and day indicated by the otp state.
+		 * 
+		 * The matsim departure ids differ from the otp trip ids in order to 
+		 * differentiate between matsim departures on the first simulated day 
+		 * ("_0" added) and matsim departures on the following day ("_1" added)
+		 * when some agents might finish their journeys started on the first 
+		 * day.
+		 * In addition to that, some otp trips shortly after midnight are 
+		 * saved as if they operated on the previous day, so these otp trips
+		 * are saved with "_-1" added to the otp trip in order to create a 
+		 * matsim departure id.
+		 * See ReadGraph.writeTripTime() method for more details.
+		 *
+		 * The departure time has to be checked in order to avoid that a
+		 * TransitRoute is returned although the trip meant by otp was
+		 * exported into the matsim transit schedule only as a departure
+		 * on another day but was not exported for the day it shall be used 
+		 * according to the otp routing result. E.g. the otp trip id=ABC was 
+		 * exported into the matsim transit schedule only as departure id=ABC_0
+		 * operating at 09:00:00 but otp returned a routing result which
+		 * suggests boarding trip id=ABC on the following day (33:00:00 in
+		 * matsim time) and there is no matsim departure id=ABC_1 operating
+		 * at 33:00:00. The agent would stuck while waiting for the bus.
+		 *
+		 * Apparently otp always uses the time zone UTC in class State and 
+		 * State.getTimeMillis() whereas matsim uses the time zone specified in
+		 * variable timeZone. So the otp time has to be converted to the time
+		 * zone used in matsim.
 		 */
+		Date arrivalTime = new Date(timeInMillis - day.getTime());
+		Calendar scheduledOTPTripArrivalTime = Calendar.getInstance();
+		scheduledOTPTripArrivalTime.setTimeZone(timeZone);
+		scheduledOTPTripArrivalTime.setTime(arrivalTime);
 		for(TransitRoute tr: transitSchedule.getTransitLines().get(tlId).getRoutes().values()){
-			if(tr.getDepartures().containsKey(Id.create(backTrip.getId().toString() + "_0", Departure.class)) ||
-					tr.getDepartures().containsKey(Id.create(backTrip.getId().toString() + "_1", Departure.class)) ||
-					tr.getDepartures().containsKey(Id.create(backTrip.getId().toString() + "_-1", Departure.class))){
-				trId = tr.getId();
-				return tsf.createTransitRoute(trId, null , emptyList, null);
+			TransitStopFacility egressFacility = otpEgressFacility;
+			if(useCreatePseudoNetworkInsteadOfOtpPtNetwork && 
+					// Check whether the TransitRoute contains the otp trip searched for, if not, 
+					// the transit stop looked up here is not necessarily serviced by the TransitRoute
+					(tr.getDepartures().containsKey(Id.create(backTrip.getId().toString() + "_0", Departure.class)) || 
+							tr.getDepartures().containsKey(Id.create(backTrip.getId().toString() + "_1", Departure.class)) || 
+							tr.getDepartures().containsKey(Id.create(backTrip.getId().toString() + "_-1", Departure.class)) )){
+				Id<TransitStopFacility> egressFacilityId = getPseudoNetworkTransitStopFacilityId(otpEgressFacility.getId(), tlId, tr.getId());
+				egressFacility = transitSchedule.getFacilities().get(egressFacilityId);
+			}
+			if(tr.getDepartures().containsKey(Id.create(backTrip.getId().toString() + "_0", Departure.class))) {
+				double scheduledMatsimDepartureArrivalTime = tr.getDepartures().get(
+						Id.create(backTrip.getId().toString() + "_0", Departure.class)).getDepartureTime() +
+						tr.getStop(egressFacility).getArrivalOffset();
+				//Ignore possible rounding errors
+				if(Math.abs(scheduledMatsimDepartureArrivalTime - scheduledOTPTripArrivalTime.getTimeInMillis()/1000) < 0.1) {
+					trId = tr.getId();
+					return tsf.createTransitRoute(trId, null , emptyList, null);
+				}
+			} else if (tr.getDepartures().containsKey(Id.create(backTrip.getId().toString() + "_1", Departure.class))) {
+				double scheduledMatsimDepartureArrivalTime = tr.getDepartures().get(
+						Id.create(backTrip.getId().toString() + "_1", Departure.class)).getDepartureTime() +
+						tr.getStop(egressFacility).getArrivalOffset();
+				//Ignore possible rounding errors
+				if(Math.abs(scheduledMatsimDepartureArrivalTime - scheduledOTPTripArrivalTime.getTimeInMillis()/1000) < 0.1) {
+					trId = tr.getId();
+					return tsf.createTransitRoute(trId, null , emptyList, null);
+				}
+			} else if (tr.getDepartures().containsKey(Id.create(backTrip.getId().toString() + "_-1", Departure.class))){
+				double scheduledMatsimDepartureArrivalTime = tr.getDepartures().get(
+						Id.create(backTrip.getId().toString() + "_-1", Departure.class)).getDepartureTime() +
+						tr.getStop(egressFacility).getArrivalOffset();
+				//Ignore possible rounding errors
+				if(Math.abs(scheduledMatsimDepartureArrivalTime - scheduledOTPTripArrivalTime.getTimeInMillis()/1000) < 0.1) {
+					trId = tr.getId();
+					return tsf.createTransitRoute(trId, null , emptyList, null);
+				}
 			}
 		}
 		log.info("No Matsim TransitRoute found for otp trip id \"" + 
