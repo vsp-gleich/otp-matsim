@@ -439,6 +439,13 @@ public class OTPRoutingModule implements RoutingModule {
 			Id<TransitStopFacility> stopFacilityIdToBeTested;
 			do{
 				j++;
+				// It is unlikely that CreatePseudoNetwork has split any transit stop into more
+				// than 100 separate stops
+				if(j > 100){
+					log.warn("No corresponding CreatePseudoNetwork TransitStopFacility id found for otp stopFacilityId " + stopFacilityId +
+							" supposed to be part of TransitLine " + transitLineId + "'s TransitRoute " + transitRouteId);
+					return null;
+				}
 				stopFacilityIdToBeTested = Id.create(stopFacilityId.toString() + "." + j, TransitStopFacility.class);
 			} while(transitSchedule.getTransitLines().get(transitLineId).getRoutes().get(transitRouteId).getStop(transitSchedule.getFacilities().get(stopFacilityIdToBeTested)) == null);
 			return stopFacilityIdToBeTested;
