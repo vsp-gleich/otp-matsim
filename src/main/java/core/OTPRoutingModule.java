@@ -39,7 +39,12 @@ import java.util.*;
 import org.apache.log4j.Logger;
 
 /**
- * TODO: -consider schedule export for multiple days. Especially in rural areas otp sometimes returns pt journeys which arrive several days after the departure time.)
+ * TODO: 
+ * -differentiate between departures repeated on different days, in order to find unusable otp routes which include an otp trip which was exported for day x only but shall be used on day y
+ * (otp trips have a so called service id which indicates on which days the trip is operated whereas matsim has no such service id but a timetable with departures operated only once at
+ * the time indicated by the time of the day. This time of the day can be greater than 24:00:00, so departures on the following days can be saved in matsim, too. But these are additional
+ * departures with different ids independent from the original departure 24 hours before or after whereas the otp trip id is identical for all days on which the trip is operated.)
+ * -consider schedule export for multiple days. Especially in rural areas otp sometimes returns pt journeys which arrive several days after the departure time.
  * 
  * @author gleich
  *
@@ -313,13 +318,14 @@ public class OTPRoutingModule implements RoutingModule {
                     			 * another destination or would stay where they are. Therefore exporting the transit
                     			 * schedule for an even longer time span of multiple days does not seem to be a good
                     			 * solution, as the agent will eventually choose another plan anyway. In order to avoid
-                    			 * crashes due to otp trips without corresponding TransitRoutes, these are replaced
-                    			 * with teleport legs.
+                    			 * crashes due to otp trips without corresponding TransitRoutes, the OTPRoutingModule
+                    			 * should act as if no route was found (just as the Matsim pt router would act for the 
+                    			 * given Matsim transit schedule).
                     			 */
-                				legs.addAll(createTeleportationTrip(accessFacility.getLinkId(), egressFacility.getLinkId(),
-                						TELEPORT_MISSING_MATSIM_DEPARTURE));
-                				log.info("Pt leg with otp trip id \"" + backTrip.getId().toString() + "\" of TransitLine \"" +
-                						backTrip.getRoute().getId().toString() + " was replaced by a teleport leg.");
+                    			legs.clear();
+                    			log.info("No route returned, because the route calculated by otp includes otp trips" +
+                    					" which could not be found in the matsim transit schedule.");
+                    			break;
                     		} else {
                     			// This should nether happen under normal circumstances.
                     			log.warn("No Matsim TransitRoute found for otp trip id \"" + 

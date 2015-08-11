@@ -51,6 +51,8 @@ import java.util.TimeZone;
 
 /**
  * TODO: 
+ * -CreatePseudoNetwork sets the freespeed to 30km/h which is far too low e.g.
+ * for interurban bus lines, so these lines are delayed in the simulation
  * -otp trips which depart at their first stop before the simulation starts 
  * (that means usually departures before midnight) are simulated to depart at 
  * the first stop at the simulation begin -> huge delays that can be avoided

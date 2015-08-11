@@ -34,9 +34,9 @@ public class Run {
     public static final int LAST_ITERATION = 0;
     
     public static void main(String[] args){
-    	RunOTP.runGraphBuilder(OTP_GRAPH_DIR);
-    	RunOTP.runGraphVisualizer(OTP_GRAPH_DIR);
-    	runExtractNetwork();
+//    	RunOTP.runGraphBuilder(OTP_GRAPH_DIR);
+//    	RunOTP.runGraphVisualizer(OTP_GRAPH_DIR);
+//    	runExtractNetwork();
     	runGeneratePopulationAndScenario();
     }
 
