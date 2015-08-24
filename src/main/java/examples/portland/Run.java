@@ -40,7 +40,7 @@ public class Run {
     public static final String DATE = "2015-02-10"; // Tuesday
     public static final int SCHEDULE_END_TIME_ON_FOLLOWING_DATE = 6*60*60;
     
-    public static final boolean USE_CREATE_PSEUDO_NETWORK_INSTEAD_OF_OTP_PT_NETWORK = false;
+    public static final boolean USE_CREATE_PSEUDO_NETWORK_INSTEAD_OF_OTP_PT_NETWORK = true;
     public static final int POPULATION_SIZE = 10;
     public static final int LAST_ITERATION = 0;
     
