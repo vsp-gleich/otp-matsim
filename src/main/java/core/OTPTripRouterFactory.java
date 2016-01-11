@@ -5,20 +5,19 @@ import org.matsim.api.core.v01.network.Network;
 import org.matsim.api.core.v01.population.Leg;
 import org.matsim.api.core.v01.population.PlanElement;
 import org.matsim.core.router.MainModeIdentifier;
-import org.matsim.core.router.RoutingContext;
 import org.matsim.core.router.TripRouter;
-import org.matsim.core.router.TripRouterFactory;
 import org.matsim.core.utils.geometry.CoordinateTransformation;
 import org.matsim.pt.transitSchedule.api.TransitSchedule;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.impl.InputStreamGraphSource;
 import org.opentripplanner.routing.services.GraphService;
 
+import javax.inject.Provider;
 import java.io.File;
 import java.util.List;
 
 public final class OTPTripRouterFactory implements
-		TripRouterFactory {
+		Provider<TripRouter> {
 	// TripRouterFactory: Matsim interface for routers
 	
 	private CoordinateTransformation ct;
@@ -55,7 +54,7 @@ public final class OTPTripRouterFactory implements
 
 
     @Override
-	public TripRouter instantiateAndConfigureTripRouter(RoutingContext iterationContext) {
+	public TripRouter get() {
 		TripRouter tripRouter = new TripRouter();
 		// OtpRoutingModule uses the modes teleport_begin_or_end and teleport_transit_stop_area
 		// -> new modes whose main mode is unknown

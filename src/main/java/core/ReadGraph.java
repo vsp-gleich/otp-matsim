@@ -11,7 +11,7 @@ import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.population.routes.LinkNetworkRouteFactory;
 import org.matsim.core.population.routes.NetworkRoute;
 import org.matsim.core.scenario.ScenarioUtils;
-import org.matsim.core.utils.geometry.CoordImpl;
+import org.matsim.core.utils.geometry.CoordUtils;
 import org.matsim.core.utils.geometry.CoordinateTransformation;
 import org.matsim.pt.transitSchedule.api.Departure;
 import org.matsim.pt.transitSchedule.api.TransitLine;
@@ -161,7 +161,7 @@ public class ReadGraph implements Runnable {
         for (Vertex v : graphService.getRouter().graph.getVertices()) {
             if (v instanceof IntersectionVertex) {
                 // Can be an OSM node, but can also be a split OSM way to insert a transit stop.
-                Node n = network.getFactory().createNode(Id.create(v.getIndex(), Node.class), ct.transform(new CoordImpl(v.getX(), v.getY())));
+                Node n = network.getFactory().createNode(Id.create(v.getIndex(), Node.class), ct.transform(CoordUtils.createCoord(v.getX(), v.getY())));
                 network.addNode(n);
             }
         }
@@ -194,7 +194,7 @@ public class ReadGraph implements Runnable {
         	if (v instanceof TransitStop) {
         		TransitStop transitStop = (TransitStop) v;
         		String stopId = transitStop.getStopId().toString();
-        		Coord coord = ct.transform(new CoordImpl(transitStop.getX(), transitStop.getY()));
+        		Coord coord = ct.transform(CoordUtils.createCoord(transitStop.getX(), transitStop.getY()));
         		/* isBlocking set to false because several lines each stopping at a different stop in otp are mapped to one matsim stop */
         		TransitStopFacility transitStopFacility = scenario.getTransitSchedule().getFactory().createTransitStopFacility(
         				Id.create(stopId, TransitStopFacility.class),

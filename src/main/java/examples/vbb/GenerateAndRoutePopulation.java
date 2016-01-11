@@ -12,12 +12,8 @@ import org.matsim.core.network.MatsimNetworkReader;
 import org.matsim.core.network.NetworkImpl;
 import org.matsim.core.population.ActivityImpl;
 import org.matsim.core.router.PlanRouter;
-import org.matsim.core.router.RoutingContext;
-import org.matsim.core.router.util.TravelDisutility;
-import org.matsim.core.router.util.TravelTime;
-import org.matsim.core.scenario.ScenarioImpl;
 import org.matsim.core.scenario.ScenarioUtils;
-import org.matsim.core.utils.geometry.CoordImpl;
+import org.matsim.core.utils.geometry.CoordUtils;
 import org.matsim.core.utils.geometry.transformations.IdentityTransformation;
 import org.matsim.population.algorithms.AbstractPersonAlgorithm;
 import org.matsim.population.algorithms.ParallelPersonAlgorithmRunner;
@@ -68,8 +64,8 @@ public class GenerateAndRoutePopulation {
 		config.network().setInputFile("/Users/zilske/gtfs-bvg/network.xml");
 		final Scenario scenario = ScenarioUtils.createScenario(config);
 
-		new MatsimNetworkReader(scenario).readFile("/Users/zilske/gtfs-bvg/network.xml");
-		new VehicleReaderV1(((ScenarioImpl) scenario).getVehicles()).readFile(config.transit().getVehiclesFile());
+		new MatsimNetworkReader(scenario.getNetwork()).readFile("/Users/zilske/gtfs-bvg/network.xml");
+		new VehicleReaderV1(scenario.getVehicles()).readFile(config.transit().getVehiclesFile());
 		new TransitScheduleReader(scenario).readFile(config.transit().getTransitScheduleFile());
 
 		// new NetworkCleaner().run(scenario.getNetwork());
@@ -88,8 +84,8 @@ public class GenerateAndRoutePopulation {
 		population = scenario.getPopulation();
 		network = (NetworkImpl) scenario.getNetwork();
 		for (int i=0; i<10; ++i) {
-			Coord source = new CoordImpl(minX + Math.random() * (maxX - minX), minY + Math.random() * (maxY - minY));
-			Coord sink = new CoordImpl(minX + Math.random() * (maxX - minX), minY + Math.random() * (maxY - minY));
+			Coord source = CoordUtils.createCoord(minX + Math.random() * (maxX - minX), minY + Math.random() * (maxY - minY));
+			Coord sink = CoordUtils.createCoord(minX + Math.random() * (maxX - minX), minY + Math.random() * (maxY - minY));
 			Person person = population.getFactory().createPerson(Id.create(Integer.toString(i), Person.class));
 			Plan plan = population.getFactory().createPlan();
 			plan.addActivity(createHome(source));
@@ -116,23 +112,7 @@ public class GenerateAndRoutePopulation {
 				new ParallelPersonAlgorithmRunner.PersonAlgorithmProvider() {
 			@Override
 			public AbstractPersonAlgorithm getPersonAlgorithm() {
-				return new PersonPrepareForSim(new PlanRouter(
-						trf.instantiateAndConfigureTripRouter(new RoutingContext() {
-
-							@Override
-							public TravelDisutility getTravelDisutility() {
-								// TODO Auto-generated method stub
-								return null;
-							}
-
-							@Override
-							public TravelTime getTravelTime() {
-								// TODO Auto-generated method stub
-								return null;
-							}
-							
-						}),
-						((ScenarioImpl)scenario).getActivityFacilities()), scenario);
+				return new PersonPrepareForSim(new PlanRouter(trf.get(), scenario.getActivityFacilities()), scenario);
 			}
 		});
 

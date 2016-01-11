@@ -15,7 +15,7 @@ import org.matsim.core.controler.Controler;
 import org.matsim.core.controler.OutputDirectoryHierarchy;
 import org.matsim.core.network.MatsimNetworkReader;
 import org.matsim.core.scenario.ScenarioUtils;
-import org.matsim.core.utils.geometry.CoordImpl;
+import org.matsim.core.utils.geometry.CoordUtils;
 import org.matsim.core.utils.geometry.transformations.TransformationFactory;
 import org.matsim.pt.router.TransitRouter;
 import org.matsim.pt.transitSchedule.api.TransitScheduleReader;
@@ -86,7 +86,7 @@ public class GeneratePopulationAndRunScenario {
 
         scenario = ScenarioUtils.createScenario(config);
 
-		new MatsimNetworkReader(scenario).readFile(config.network().getInputFile());
+		new MatsimNetworkReader(scenario.getNetwork()).readFile(config.network().getInputFile());
 		new TransitScheduleReader(scenario).readFile(config.transit().getTransitScheduleFile());
 		new VehicleReaderV1(scenario.getTransitVehicles()).readFile(config.transit().getVehiclesFile());
 		
@@ -137,8 +137,8 @@ public class GeneratePopulationAndRunScenario {
 //			Coord source = TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, Consts.TARGET_SCENARIO_COORDINATE_SYSTEM).transform(new CoordImpl(10.0285, 48.4359));
 //			Coord sink =TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, Consts.TARGET_SCENARIO_COORDINATE_SYSTEM).transform(new CoordImpl(10.0278, 48.4357));
 			// walk+pt legs short trip: majority rides bicycle
-			Coord source = TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, Run.TARGET_SCENARIO_COORDINATE_SYSTEM).transform(new CoordImpl(10.0310, 48.4339));
-			Coord sink =TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, Run.TARGET_SCENARIO_COORDINATE_SYSTEM).transform(new CoordImpl(10.0026, 48.4190));
+			Coord source = TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, Run.TARGET_SCENARIO_COORDINATE_SYSTEM).transform(CoordUtils.createCoord(10.0310, 48.4339));
+			Coord sink =TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, Run.TARGET_SCENARIO_COORDINATE_SYSTEM).transform(CoordUtils.createCoord(10.0026, 48.4190));
 			// walk+pt legs long trip
 //			Coord source = TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, Consts.TARGET_SCENARIO_COORDINATE_SYSTEM).transform(new CoordImpl(10.0310, 48.4339));
 //			Coord sink =TransformationFactory.getCoordinateTransformation(TransformationFactory.WGS84, Consts.TARGET_SCENARIO_COORDINATE_SYSTEM).transform(new CoordImpl(9.940, 48.366));
