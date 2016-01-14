@@ -42,8 +42,8 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>2.3.2</version>
                 <configuration>
-                    <source>1.7</source>
-                    <target>1.7</target>
+                    <source>1.8</source>
+                    <target>1.8</target>
                     <showWarnings>false</showWarnings>
                     <showDeprecation>false</showDeprecation>
                     <encoding>UTF-8</encoding>
@@ -87,7 +87,7 @@
         <dependency>
             <groupId>org.opentripplanner</groupId>
             <artifactId>otp</artifactId>
-            <version>0.18.0</version>
+            <version>0.19.0</version>
         </dependency>
         <dependency>
             <groupId>org.matsim</groupId>
