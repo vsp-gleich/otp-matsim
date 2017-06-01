@@ -1,3 +1,7 @@
 
 *.iml
 output
+/bin/
+/target/
+/.classpath
+/.project
