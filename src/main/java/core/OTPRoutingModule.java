@@ -97,7 +97,6 @@ public class OTPRoutingModule implements RoutingModule {
 	
     private final boolean useCreatePseudoNetworkInsteadOfOtpPtNetwork;
 	private final static Logger log = Logger.getLogger(OTPRoutingModule.class);
-	private boolean noTransitRouteFoundForAtLeastOneTrip = false;
 	
 	/**
 	 * 
@@ -137,6 +136,7 @@ public class OTPRoutingModule implements RoutingModule {
 	    otp2MatsimModes.put(TraverseMode.BICYCLE, "bike");
 	}
 
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Override
 	public List<? extends PlanElement> calcRoute(Facility fromFacility, Facility toFacility, double departureTime, Person person) {
         List<Leg> baseTrip = routeLeg(fromFacility, toFacility, departureTime);
@@ -174,6 +174,7 @@ public class OTPRoutingModule implements RoutingModule {
 		return new StageActivityTypesImpl( Arrays.asList( PtConstants.TRANSIT_ACTIVITY_TYPE ) );
 	}
 
+	@SuppressWarnings("rawtypes")
 	private LinkedList<Leg> routeLeg(Facility fromFacility, Facility toFacility, double departureTime) {
 		LinkedList<Leg> legs = new LinkedList<Leg>();
 		TraverseModeSet modeSet = new TraverseModeSet();
@@ -460,6 +461,7 @@ public class OTPRoutingModule implements RoutingModule {
 	 * @param legs
 	 */
 	private LinkedList<Leg> addTeleportsBetweenDifferingStopFacilityIds(LinkedList<Leg> legs) {
+		@SuppressWarnings("unchecked")
 		LinkedList<Leg> legsWithAddedTeleports = (LinkedList<Leg>) legs.clone();
 		int offsetBetweenInputAndOutputListIndex = 0;
 		for(int i = 0; i < legs.size() - 1; i++){
