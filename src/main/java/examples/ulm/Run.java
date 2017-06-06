@@ -5,11 +5,7 @@ import run.GeneratePopulationAndRunScenario;
 import run.RunOTP;
 
 public class Run {
-	/**
-	 * BASEDIR should include Openstreetmap data in a file named *.osm or *.pbf
-	 * and a zip file with GTFS data
-	 */
-    public static final String BASEDIR = "output/Ulm/";
+    public static final String BASEDIR = "/Users/gleich/Documents/otp-matsim-praes/Ulm/";
     /** Created by ExtractNetwork*/
     public static final String TRANSIT_SCHEDULE_FILE = BASEDIR + "extracted-transitschedule_withoutCreatePseudoNetwork.xml";
     /** Created by ExtractNetwork*/
@@ -17,6 +13,10 @@ public class Run {
     /** Created by ExtractNetwork*/
     public static final String NETWORK_FILE = BASEDIR + "extracted-network_withoutCreatePseudoNetwork.xml";
     
+    /**
+     * OTP_GRAPH_DIR should include Openstreetmap data in a file named *.osm or *.pbf
+     * and a zip file with GTFS data
+     */
     public static final String OTP_GRAPH_DIR = BASEDIR + "otp-graph/";
     public static final String POPULATION_FILE = BASEDIR + "population.xml";
     public static final String OUTPUT_DIR = BASEDIR + "testOneIteration_withoutCreatePseudoNetwork";
@@ -33,8 +33,8 @@ public class Run {
     public static final int LAST_ITERATION = 0;
     
     public static void main(String[] args){
-//    	RunOTP.runGraphBuilder(OTP_GRAPH_DIR);
-//    	RunOTP.runGraphVisualizer(OTP_GRAPH_DIR);
+    	RunOTP.runGraphBuilder(OTP_GRAPH_DIR);
+    	RunOTP.runGraphVisualizer(OTP_GRAPH_DIR);
     	runExtractNetwork();
     	runGeneratePopulationAndScenario();
     }
